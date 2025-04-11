@@ -1,0 +1,1 @@
+target_sources(marching PRIVATE main.cpp)
