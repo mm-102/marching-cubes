@@ -2,6 +2,7 @@
 #include <GLFW/glfw3.h>
 #include <cstdlib>
 #include <cstdio>
+#include <display/window_manager.hpp>
 #include <display/shaderpregram.hpp>
 
 //Error processing callback procedure
@@ -10,31 +11,15 @@ static void error_callback(int error, const char* description) {
 }
 
 int main(){
-    GLFWwindow* window;
+	WindowManager windowManager(500, 500, "Marching Cubes");
 
-    glfwSetErrorCallback(error_callback);
-
-    if (!glfwInit()) {
-		fprintf(stderr, "Can't initialize GLFW.\n");
+	if(!windowManager.init()){
 		exit(EXIT_FAILURE);
 	}
 
-	window = glfwCreateWindow(500, 500, "marching", NULL, NULL);
-
-	glfwMakeContextCurrent(window);
-	glfwSwapInterval(1); //During vsync wait for the first refresh
-
-    GLenum err;
-	if ((err = glewInit()) != GLEW_OK) { //Initialize GLEW library
-		fprintf(stderr, "Can't initialize GLEW: %s\n", glewGetErrorString(err));
-		exit(EXIT_FAILURE);
+	while(!windowManager.should_close()){
+		windowManager.poll_events();
 	}
-    glfwSetTime(0);
-    while (!glfwWindowShouldClose(window)){
-        glfwPollEvents();
-    }
 
-    glfwDestroyWindow(window);
-	glfwTerminate();
     return EXIT_SUCCESS;
 }

@@ -1,0 +1,34 @@
+#pragma once
+#include <GL/glew.h>
+#include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
+#include <cstdio>
+#include <string>
+
+class WindowManager{
+    glm::ivec2 window_size;
+    float window_ratio;
+    const std::string title;
+    GLFWwindow* window;
+
+    static void error_callback(int error, const char* description);
+
+    void key_callback(GLFWwindow* window, int key,
+        int scancode, int action, int mods);
+    void mouse_pos_callback(GLFWwindow* window, double xpos, double ypos);
+    void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
+    void window_resize_callback(GLFWwindow* window, int width, int height);
+    
+public:
+    WindowManager(int width, int heigth, const std::string title);
+    WindowManager(glm::ivec2 size, const std::string title);
+    ~WindowManager();
+    bool init();
+    bool should_close();
+    void poll_events();
+    
+    
+    glm::ivec2 get_size();
+    void set_size(glm::ivec2 size);
+    float get_size_ratio();
+};
