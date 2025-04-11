@@ -2,6 +2,7 @@
 #include <GLFW/glfw3.h>
 #include <cstdlib>
 #include <cstdio>
+#include <display/shaderpregram.hpp>
 
 //Error processing callback procedure
 static void error_callback(int error, const char* description) {

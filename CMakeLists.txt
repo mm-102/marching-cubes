@@ -16,4 +16,5 @@ target_link_libraries(marching PUBLIC glfw)
 find_package(GLEW 2.2 REQUIRED)
 target_link_libraries(marching PUBLIC GLEW::GLEW)
 
+target_include_directories(marching PUBLIC src)
 add_subdirectory(src)
