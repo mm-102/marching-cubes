@@ -29,7 +29,7 @@ private:
     Mode mode;
 
 public:
-    Camera(glm::vec3 pos, glm::vec3 dir, float fov, float far, float ratio);
+    Camera(glm::vec3 pos, glm::vec3 dir, float fov, float far, float ratio, Mode mode = Mode::CENTER);
     void useCamera(ShaderProgram &shaderProgram);
     void updateWindowRatio(float ratio);
     bool handle_key_event(int key, int action, int mods);

@@ -42,6 +42,10 @@ ShaderProgram::ShaderProgram(const std::string &vertCode, const std::string &fra
     this->fragmentShader = ShaderProgram::loadShader(GL_FRAGMENT_SHADER, fragCode);
     this->shaderProgram = glCreateProgram();
 
+	glAttachShader(shaderProgram, vertexShader);
+	glAttachShader(shaderProgram, fragmentShader);
+	glLinkProgram(shaderProgram);
+
     int infologLength = 0;
 	int charsWritten = 0;
 	char* infoLog;
@@ -55,7 +59,6 @@ ShaderProgram::ShaderProgram(const std::string &vertCode, const std::string &fra
 		printf("%s\n", infoLog);
 		delete[]infoLog;
 	}
-
 }
 
 ShaderProgram::~ShaderProgram(){

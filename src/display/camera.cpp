@@ -5,7 +5,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-Camera::Camera(glm::vec3 pos, glm::vec3 dir, float fov, float far, float ratio) : pos(pos, 1.0f), dir(dir, 0.0f), fov(fov), far(far), vel_dir(0.0f){
+Camera::Camera(glm::vec3 pos, glm::vec3 dir, float fov, float far, float ratio, Mode mode) : pos(pos, 1.0f), dir(dir, 0.0f), fov(fov), far(far), mode(mode), vel_dir(0.0f){
     rot = glm::quat(0.0f, 0.0f, 0.0f, 1.0f);
     rotx = 0;
     roty = 0;
@@ -24,6 +24,7 @@ void Camera::set_mode(Mode mode){
 }
 
 void Camera::useCamera(ShaderProgram &shaderProgram){
+    shaderProgram.use();
     glUniformMatrix4fv(shaderProgram.u("P"), 1, false, glm::value_ptr(P));
 	glUniformMatrix4fv(shaderProgram.u("V"), 1, false, glm::value_ptr(V));
 	glUniform3fv(shaderProgram.u("uCamera"),1,glm::value_ptr(glm::vec3(pos)));

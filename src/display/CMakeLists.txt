@@ -1,7 +1,7 @@
 file(GLOB display_src *.cpp)
 add_library(libdisplay ${display_src})
 target_compile_features(libdisplay PUBLIC cxx_std_20)
-set(B_PRODUCTION_MODE ON)
+# set(B_PRODUCTION_MODE ON)
 set_property(TARGET libdisplay PROPERTY CXX_STANDARD 20)
 
 find_package(OpenGL REQUIRED)

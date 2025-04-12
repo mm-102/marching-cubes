@@ -2,6 +2,7 @@
 
 #include "shaderprogram.hpp"
 #include "renderable.hpp"
+#include "camera.hpp"
 #include <memory>
 
 class SimpleRenderer{
@@ -20,5 +21,5 @@ public:
 
     SimpleRenderer();
     void draw(std::shared_ptr<RenderableObject> &obj, DrawMod mod = SimpleRenderer::DefaultDraw());
-
+    void useCamera(Camera &camera);
 };

@@ -54,6 +54,13 @@ bool WindowManager::init(){
     });
 
     glfwSetTime(0);
+
+    glClearColor(0.2, 0.2, 0.2, 1.0);
+    glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LESS);
+    glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
     return true;
 }
 
@@ -80,17 +87,61 @@ float WindowManager::get_size_ratio(){
 void WindowManager::key_callback(GLFWwindow* window, int key,
     int scancode, int action, int mods){
 
+    if (mouse_active && action == GLFW_PRESS && key == GLFW_KEY_ESCAPE) {
+        mouse_active = false;
+        glfwSetCursorPos(window, 0, 0);
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        return;
+    }
+    attached_key_callback(key, scancode, action, mods);
 }
 
 void WindowManager::mouse_pos_callback(GLFWwindow* window, double xpos, double ypos){
-
+    if(!mouse_active) return;
+    attached_mouse_pos_callback(xpos-last_mouse_pos[0], ypos-last_mouse_pos[1]);
+    last_mouse_pos[0] = xpos;
+    last_mouse_pos[1] = ypos;
 }
 
 void WindowManager::mouse_button_callback(GLFWwindow* window, int button, int action, int mods){
-
+    if (!mouse_active && action == GLFW_PRESS && button == GLFW_MOUSE_BUTTON_1) {
+		mouse_active = true;
+		glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+		glfwGetCursorPos(window, last_mouse_pos, last_mouse_pos + 1);
+	}
+    attached_mouse_button_callback(button, action, mods);
 }
 
 void WindowManager::window_resize_callback(GLFWwindow* window, int width, int height){
     if (height == 0) return;
     set_size(glm::ivec2(width, height));
+    attached_resize_callback(width,height,window_ratio);
+}
+
+void WindowManager::attach_key_callback(std::function<void(int,int,int,int)> callback){
+    attached_key_callback = callback;
+}
+void WindowManager::attach_resize_callback(std::function<void(int,int,float)> callback){
+    attached_resize_callback = callback;
+}
+void WindowManager::attach_mouse_button_callback(std::function<void(int,int,int)> callback){
+    attached_mouse_button_callback = callback;
+}
+void WindowManager::attach_mouse_pos_callback(std::function<void(double,double)> callback){
+    attached_mouse_pos_callback = callback;
+}
+
+void WindowManager::draw_scene(Camera &camera){
+    renderer->useCamera(camera);
+    for(auto obj : objects){
+        renderer->draw(obj);
+    }
+    glfwSwapBuffers(window);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glClear(GL_DEPTH_BUFFER_BIT);
+    glClearColor(0.2, 0.2, 0.2, 1.0);
+}
+
+void WindowManager::add_object(std::shared_ptr<RenderableObject> obj){
+    objects.push_back(obj);
 }

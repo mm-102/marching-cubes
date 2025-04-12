@@ -27,3 +27,8 @@ void SimpleRenderer::draw(std::shared_ptr<RenderableObject> &obj, DrawMod mod){
         draw(child, children_draw_mod);
     }
 }
+
+void SimpleRenderer::useCamera(Camera &camera){
+    spMain.use();
+    camera.useCamera(spMain);
+}
