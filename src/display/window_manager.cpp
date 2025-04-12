@@ -1,4 +1,4 @@
-#include <display/window_manager.hpp>
+#include "window_manager.hpp"
 
 #include <iostream>
 
@@ -32,6 +32,8 @@ bool WindowManager::init(){
         std::cerr << "Can't initialize GLEW: " << glewGetErrorString(err) << std::endl;
 		return false;
 	}
+
+    renderer = std::unique_ptr<SimpleRenderer>(new SimpleRenderer());
 
     glfwSetWindowUserPointer(window, this);
 

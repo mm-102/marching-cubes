@@ -1,4 +1,4 @@
-#include <display/shaderpregram.hpp>
+#include "shaderpregram.hpp"
 
 #include <sstream>
 #include <fstream>
@@ -6,15 +6,17 @@
 std::string ShaderProgram::readFile(std::string fileName){
     std::stringstream buf;
     std::ifstream file(fileName);
+	if(!file.is_open()){
+		std::cerr << "Error opening file: " << fileName << std::endl;
+		return "";
+	}
     buf << file.rdbuf();
     return buf.str();
 }
 
-GLuint ShaderProgram::loadShader(GLenum shaderType, std::string fileName) {
+GLuint ShaderProgram::loadShader(GLenum shaderType, const std::string &code) {
     GLuint shader = glCreateShader(shaderType);
-
-    std::string shaderSource = readFile(fileName);
-	const GLchar* s[] = { shaderSource.c_str() };
+	const GLchar* s[] = { code.c_str() };
 
     glShaderSource(shader, 1, s, NULL);
     glCompileShader(shader);
@@ -28,17 +30,16 @@ GLuint ShaderProgram::loadShader(GLenum shaderType, std::string fileName) {
 	if (infologLength > 1) {
 		infoLog = new char[infologLength];
 		glGetShaderInfoLog(shader, infologLength, &charsWritten, infoLog);
-		std::cout << infoLog << std::endl;
+		std::cerr << "Shader compile info: " << infoLog << std::endl;
 		delete[] infoLog;
 	}
 
-	//Return shader handle
 	return shader;
 }
 
-ShaderProgram::ShaderProgram(const std::string vertFile, const std::string fragFile){
-    this->vertexShader = loadShader(GL_VERTEX_SHADER, vertFile);
-    this->fragmentShader = loadShader(GL_FRAGMENT_SHADER, vertFile);
+ShaderProgram::ShaderProgram(const std::string &vertCode, const std::string &fragCode){
+    this->vertexShader = ShaderProgram::loadShader(GL_VERTEX_SHADER, vertCode);
+    this->fragmentShader = ShaderProgram::loadShader(GL_FRAGMENT_SHADER, fragCode);
     this->shaderProgram = glCreateProgram();
 
     int infologLength = 0;
@@ -55,6 +56,16 @@ ShaderProgram::ShaderProgram(const std::string vertFile, const std::string fragF
 		delete[]infoLog;
 	}
 
+}
+
+ShaderProgram::~ShaderProgram(){
+	glDetachShader(shaderProgram, vertexShader);
+	glDetachShader(shaderProgram, fragmentShader);
+
+	glDeleteShader(vertexShader);
+	glDeleteShader(fragmentShader);
+
+	glDeleteProgram(shaderProgram);
 }
 
 //Make the shader program active

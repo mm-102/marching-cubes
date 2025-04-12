@@ -4,12 +4,15 @@
 #include <glm/glm.hpp>
 #include <cstdio>
 #include <string>
+#include <memory>
+#include "simple_renderer.hpp"
 
 class WindowManager{
     glm::ivec2 window_size;
     float window_ratio;
     const std::string title;
     GLFWwindow* window;
+    std::unique_ptr<SimpleRenderer> renderer;
 
     static void error_callback(int error, const char* description);
 

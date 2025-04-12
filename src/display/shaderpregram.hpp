@@ -7,11 +7,11 @@ class ShaderProgram {
     GLuint shaderProgram;
     GLuint vertexShader;
     GLuint fragmentShader;
-    std::string readFile(std::string fileName);
-    GLuint loadShader(GLenum shaderType, const std::string fileName);
+    static std::string readFile(std::string fileName);
+    static GLuint loadShader(GLenum shaderType, const std::string &code);
 
 public:
-    ShaderProgram(const std::string vertFile, const std::string fragFile);
+    ShaderProgram(const std::string &vertCode, const std::string &fragCode);
     ~ShaderProgram();
     void use();
     GLuint u(const char* varName);
