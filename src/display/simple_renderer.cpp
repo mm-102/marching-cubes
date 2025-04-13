@@ -13,7 +13,7 @@ void SimpleRenderer::draw(std::shared_ptr<RenderableObject> &obj, DrawMod mod){
 
     spMain.use();
     glUniformMatrix4fv(spMain.u("M"), 1, false, glm::value_ptr(mod.rel * M * mod.model_mod));
-	glUniform3fv(spMain.u("uModulate"), 1, glm::value_ptr(obj_modulate * obj_self_modulate));
+	glUniform4fv(spMain.u("uModulate"), 1, glm::value_ptr(obj_modulate * obj_self_modulate));
 
     obj->draw(spMain);
 

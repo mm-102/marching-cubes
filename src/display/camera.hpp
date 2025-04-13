@@ -16,8 +16,11 @@ private:
     glm::quat rot;
     float rotx, roty;
 
-    glm::vec3 vel_dir;
-    float max_vel;
+    glm::vec3 lin_vel_dir;
+    float lin_vel_v;
+    glm::vec2 ang_vel_dir;
+    float ang_vel_v;
+
     float mouse_sensivity;
 
     float fov;

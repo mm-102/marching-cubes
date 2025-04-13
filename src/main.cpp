@@ -14,18 +14,25 @@ int main(){
 		exit(EXIT_FAILURE);
 	}
 
-	Camera camera(glm::vec3(0.0f,0.0f,-10.0f), glm::vec3(0.0f,0.0f,1.0f), 0.873f, 50.0f, windowManager.get_size_ratio(), Camera::Mode::FREE);
+	Camera camera(glm::vec3(0.0f,0.0f,-10.0f), glm::vec3(0.0f,0.0f,1.0f), 0.873f, 50.0f, windowManager.get_size_ratio());
 
 	std::shared_ptr<RenderableObject> triangles(new Triangles(3 * 10));
 	windowManager.add_object(triangles);
 
-	std::vector<float> test_data = {0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f};
+	std::vector<float> test_data = {
+		0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f,
+		0.0f, 0.0f, 2.0f, 1.0f, 1.0f, 2.0f, 0.0f, 1.0f, 2.0f,
+		-1.0f, 0.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f};
 	static_cast<Triangles*>(triangles.get())->add_verticies(test_data);
 
 	windowManager.attach_resize_callback([&](int w, int h, int ratio){camera.updateWindowRatio(ratio);});
 	windowManager.attach_mouse_pos_callback([&](double xrel, double yrel){camera.handle_mouse_pos_event(xrel,yrel);});
+	windowManager.attach_key_callback([&](int key,int scancode, int action, int mods){camera.handle_key_event(key,action,mods);});
 
+	float delta = 0.0f;
 	while(!windowManager.should_close()){
+		delta = windowManager.getDelta();
+		camera.update(delta);
 		windowManager.draw_scene(camera);
 		windowManager.poll_events();
 	}

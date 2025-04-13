@@ -57,7 +57,7 @@ bool WindowManager::init(){
 
     glClearColor(0.2, 0.2, 0.2, 1.0);
     glEnable(GL_DEPTH_TEST);
-	glDepthFunc(GL_LESS);
+	glDepthFunc(GL_LEQUAL);
     glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
@@ -86,29 +86,19 @@ float WindowManager::get_size_ratio(){
 
 void WindowManager::key_callback(GLFWwindow* window, int key,
     int scancode, int action, int mods){
-
-    if (mouse_active && action == GLFW_PRESS && key == GLFW_KEY_ESCAPE) {
-        mouse_active = false;
-        glfwSetCursorPos(window, 0, 0);
-        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-        return;
-    }
     attached_key_callback(key, scancode, action, mods);
 }
 
 void WindowManager::mouse_pos_callback(GLFWwindow* window, double xpos, double ypos){
-    if(!mouse_active) return;
+    glm::vec2 half_size = glm::vec2(window_size) * 0.5f;
+    xpos -= half_size.x;
+    ypos -= half_size.y;
     attached_mouse_pos_callback(xpos-last_mouse_pos[0], ypos-last_mouse_pos[1]);
     last_mouse_pos[0] = xpos;
     last_mouse_pos[1] = ypos;
 }
 
 void WindowManager::mouse_button_callback(GLFWwindow* window, int button, int action, int mods){
-    if (!mouse_active && action == GLFW_PRESS && button == GLFW_MOUSE_BUTTON_1) {
-		mouse_active = true;
-		glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-		glfwGetCursorPos(window, last_mouse_pos, last_mouse_pos + 1);
-	}
     attached_mouse_button_callback(button, action, mods);
 }
 
@@ -144,4 +134,11 @@ void WindowManager::draw_scene(Camera &camera){
 
 void WindowManager::add_object(std::shared_ptr<RenderableObject> obj){
     objects.push_back(obj);
+}
+
+// return glfw time since last call of this function
+float WindowManager::getDelta(){
+    float delta = glfwGetTime();
+    glfwSetTime(0);
+    return delta;
 }

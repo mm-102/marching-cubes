@@ -17,7 +17,6 @@ class WindowManager{
     GLFWwindow* window;
     std::unique_ptr<SimpleRenderer> renderer;
     std::vector<std::shared_ptr<RenderableObject>> objects;
-    bool mouse_active = false;
     double last_mouse_pos[2]{0};
 
     static void error_callback(int error, const char* description);
@@ -40,6 +39,7 @@ public:
     bool init();
     bool should_close();
     void poll_events();
+    float getDelta();
     
     
     glm::ivec2 get_size();
