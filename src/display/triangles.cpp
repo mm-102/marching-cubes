@@ -63,15 +63,6 @@ void Triangles::add_verticies(const std::vector<float> &data){
         }
     }
 
-    for(auto v : data){
-        std::cout << v << " ";
-    }
-    std::cout << std::endl;
-    for(auto v : normals){
-        std::cout << v << " ";
-    }
-    std::cout << std::endl;
-
     add_verticies(data, normals);
 }
 
