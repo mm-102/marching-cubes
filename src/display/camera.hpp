@@ -9,14 +9,19 @@ class Camera{
     glm::vec4 dir;
     glm::quat rot;
     glm::vec2 rotxy;
+    glm::vec3 lookCenter;
 
     glm::vec2 ang_vel_dir;
     float ang_vel_v;
 
     float dist;
+    float scroll_mul;
 
     float mouse_sensivity;
-    bool mouse_drag;
+    bool rot_drag;
+
+    bool move_drag;
+    glm::vec3 move_drag_start;
 
     float fov;
     float far;
@@ -31,6 +36,7 @@ public:
     bool handle_key_event(int key, int action, int mods);
 	void handle_mouse_pos_event(double xrel, double yrel);
 	void handle_mouse_button_event(int button, int action, int mods);
+	void handle_scroll_event(double xoff, double yoff);
 	void update(float delta);
 
     glm::vec3 get_pos();

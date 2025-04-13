@@ -49,6 +49,10 @@ bool WindowManager::init(){
         static_cast<WindowManager*>(glfwGetWindowUserPointer(w))->mouse_button_callback(w,b,a,m);
     });
 
+    glfwSetScrollCallback(window, [](GLFWwindow* w, double xoff, double yoff){
+        static_cast<WindowManager*>(glfwGetWindowUserPointer(w))->scroll_callback(w, xoff, yoff);
+    });
+
     glfwSetWindowSizeCallback(window, [](GLFWwindow* w, int wi, int he){
         static_cast<WindowManager*>(glfwGetWindowUserPointer(w))->window_resize_callback(w,wi,he);
     });
@@ -102,6 +106,10 @@ void WindowManager::mouse_button_callback(GLFWwindow* window, int button, int ac
     attached_mouse_button_callback(button, action, mods);
 }
 
+void WindowManager::scroll_callback(GLFWwindow* window, double xoff, double yoff){
+    attached_scroll_callback(xoff, yoff);
+}
+
 void WindowManager::window_resize_callback(GLFWwindow* window, int width, int height){
     if (height == 0) return;
     set_size(glm::ivec2(width, height));
@@ -116,6 +124,9 @@ void WindowManager::attach_resize_callback(std::function<void(int,int,float)> ca
 }
 void WindowManager::attach_mouse_button_callback(std::function<void(int,int,int)> callback){
     attached_mouse_button_callback = callback;
+}
+void WindowManager::attach_scroll_callback(std::function<void(double,double)> callback){
+    attached_scroll_callback = callback;
 }
 void WindowManager::attach_mouse_pos_callback(std::function<void(double,double)> callback){
     attached_mouse_pos_callback = callback;

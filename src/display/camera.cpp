@@ -8,14 +8,18 @@
 Camera::Camera(glm::vec3 pos, glm::vec3 dir, float fov, float far, float ratio) : 
     pos(pos, 1.0f), 
     dir(dir, 0.0f), 
-    rotxy(0.0f), 
+    rotxy(0.0f),
+    lookCenter(0.0f),
     ang_vel_dir(0.0f), 
     dist(10.0f),
-    mouse_drag(false),
+    scroll_mul(1.0f),
+    rot_drag(false),
+    move_drag(false),
+    move_drag_start(0.0f),
     fov(fov), far(far)
 {
     rot = glm::quat(0.0f, 0.0f, 0.0f, 1.0f);
-    mouse_sensivity = 0.001;
+    mouse_sensivity = 0.005;
     ang_vel_v = 5.0f;
     V = glm::lookAt(pos, pos+dir, glm::vec3(0.0f,1.0f,0.0f));
     updateWindowRatio(ratio);
@@ -50,6 +54,10 @@ bool Camera::handle_key_event(int key, int action, int mods){
             case GLFW_KEY_D:
                 ang_vel_dir.y = 1.0f;
                 break;
+            case GLFW_KEY_R:
+                rotxy = glm::vec2(0.0f);
+                lookCenter = glm::vec3(0.0f);
+                break;
             default:
                 event_consumed = false;
         }
@@ -77,32 +85,50 @@ bool Camera::handle_key_event(int key, int action, int mods){
 }
 
 void Camera::handle_mouse_button_event(int button, int action, int mods){
-    if(action == GLFW_PRESS && button == GLFW_MOUSE_BUTTON_1){
-        mouse_drag = true;
+    if(action == GLFW_PRESS){
+        switch(button){
+            case GLFW_MOUSE_BUTTON_1:
+            case GLFW_MOUSE_BUTTON_2:
+                rot_drag = true;
+                break;
+            case GLFW_MOUSE_BUTTON_3:
+                move_drag = true;
+                move_drag_start = lookCenter;
+        }
     }
-    else if(action == GLFW_RELEASE && button == GLFW_MOUSE_BUTTON_1){
-        mouse_drag = false;
+
+    else if(action == GLFW_RELEASE){
+        switch(button){
+            case GLFW_MOUSE_BUTTON_1:
+            case GLFW_MOUSE_BUTTON_2:
+                rot_drag = false;
+                break;
+            case GLFW_MOUSE_BUTTON_3:
+                move_drag = false;
+        }
     }
 }
 
+void Camera::handle_scroll_event(double xoff, double yoff){
+    dist = glm::clamp(dist - static_cast<float>(yoff) * scroll_mul, 3.0f, 20.0f);
+}
+
 void Camera::handle_mouse_pos_event(double xrel, double yrel){
-    // roty += xrel * mouse_sensivity;
-    
-    // const static double pi = glm::pi<double>();
-	// rotx = glm::clamp(rotx - yrel * mouse_sensivity,-pi*0.499,pi*0.499);
-
-    // rot = glm::quat(0.0f, 0.0f, 0.0f, 1.0f);
-    // rot = glm::rotate(rot, roty, glm::vec3(0.0f,1.0f,0.0f));
-    // rot = glm::rotate(rot, rotx, glm::vec3(1.0f,0.0f,0.0f));
-
-    // dir = glm::mat4_cast(glm::normalize(rot)) * glm::vec4(0.0f,0.0f,1.0f,0.0f);
-
-    // V = glm::lookAt(glm::vec3(-dir) * 10.0f, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-    // pos = -dir;
+    if(rot_drag){
+        rotxy += glm::vec2(yrel, xrel) * mouse_sensivity;
+    }
+    else if(move_drag){ // kind of messy
+        glm::vec3 left = glm::vec3(-dir.z, dir.y, dir.x);
+        lookCenter += left * static_cast<float>(xrel) * mouse_sensivity;
+        lookCenter -= glm::cross(glm::vec3(dir), left) * static_cast<float>(yrel) * mouse_sensivity;
+    }
 }
 
 void Camera::update(float delta){
     rotxy += ang_vel_dir * ang_vel_v * delta;
+
+    constexpr static float pi = glm::pi<float>();
+    rotxy.x = glm::clamp(rotxy.x, -pi*0.499f, pi*0.499f);
 
     rot = glm::quat(0.0f, 0.0f, 0.0f, 1.0f);
     rot = glm::rotate(rot, rotxy.y, glm::vec3(0.0f,1.0f,0.0f));
@@ -110,15 +136,15 @@ void Camera::update(float delta){
 
     dir = glm::mat4_cast(glm::normalize(rot)) * glm::vec4(0.0f,0.0f,1.0f,0.0f);
 
-    V = glm::lookAt(glm::vec3(-dir) * dist, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-    pos = -dir;
+    V = glm::lookAt(lookCenter - glm::vec3(-dir) * dist, lookCenter, glm::vec3(0.0f, 1.0f, 0.0f));
+    pos = glm::vec4(lookCenter, 0.0f) - dir;
 }
 
 glm::vec3 Camera::get_pos(){
     return glm::vec3(pos);
 }
 glm::vec3 Camera::get_dir(){
-    return glm::vec3(pos);
+    return glm::vec3(dir);
 }
 glm::quat Camera::get_rot(){
     return rot;

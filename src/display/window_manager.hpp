@@ -25,11 +25,13 @@ class WindowManager{
         int scancode, int action, int mods);
     void mouse_pos_callback(GLFWwindow* window, double xpos, double ypos);
     void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
+    void scroll_callback(GLFWwindow* window, double xoff, double yoff);
     void window_resize_callback(GLFWwindow* window, int width, int height);
     
     std::function<void(int,int,int,int)> attached_key_callback = [](int,int,int,int){};
     std::function<void(int,int,float)> attached_resize_callback = [](int,int,float){};
     std::function<void(int,int,int)> attached_mouse_button_callback = [](int,int,int){};
+    std::function<void(double,double)> attached_scroll_callback = [](double,double){};
     std::function<void(double,double)> attached_mouse_pos_callback = [](double,double){};
 
 public:
@@ -49,6 +51,7 @@ public:
     void attach_key_callback(std::function<void(int,int,int,int)> callback);
     void attach_resize_callback(std::function<void(int,int,float)> callback);
     void attach_mouse_button_callback(std::function<void(int,int,int)> callback);
+    void attach_scroll_callback(std::function<void(double,double)> callback);
     void attach_mouse_pos_callback(std::function<void(double,double)> callback);
 
     void draw_scene(Camera &camera);
