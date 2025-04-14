@@ -12,4 +12,5 @@ public:
 
     static Grid<float> fromFile(const std::string fileName);
     Grid<float> genSphere(glm::vec3 center, float radius);
+    Grid<float> genTorus(glm::vec3 center, float r_minor, float r_major);
 };

@@ -3,6 +3,7 @@
 #include <iterator>
 #include <iostream>
 #include <vector>
+#include <cmath>
 
 Generator::Generator(glm::uvec3 grid_size) : grid_size(grid_size){}
 Generator::Generator(unsigned sx, unsigned sy, unsigned sz) : grid_size(sx, sy, sz){}
@@ -38,4 +39,25 @@ Grid<float> Generator::genSphere(glm::vec3 center, float radius){
     }
     
     return sphere;
+}
+
+Grid<float> Generator::genTorus(glm::vec3 center, float r_minor, float r_major){
+    Grid<float> torus(grid_size);
+
+    glm::vec3 to_center;
+    float rSquared = r_minor * r_minor;
+
+    for(int z = 0; z < grid_size.z; z++){
+        for(int y = 0; y < grid_size.y; y++){
+            for(int x = 0; x < grid_size.x; x++){
+                to_center = glm::vec3(x,y,z) - center;
+                glm::vec2 xy = glm::vec2(to_center);
+                float leftSide = r_major - glm::length(xy);
+                leftSide *= leftSide;
+                leftSide += to_center.z * to_center.z;
+                torus(x,y,z) = leftSide <= rSquared ? 1 : -1;
+            }
+        }
+    }
+    return torus;
 }

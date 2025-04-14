@@ -6,6 +6,7 @@
 #pragma once
 #include <glm/glm.hpp>
 #include <vector>
+#include <functional>
 #include "grid.hpp"
 
 namespace MarchingCubes
@@ -329,4 +330,5 @@ namespace MarchingCubes
     
     std::vector<glm::vec3> trinagulate_grid(Grid<float> &grid, float isovalue);
 
+    void triangulate_grid_steps(Grid<float> &grid, float isovalue, std::function<bool(std::vector<glm::vec3> &data)> step_callback);
 }

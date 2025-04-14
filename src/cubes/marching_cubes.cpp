@@ -1,5 +1,5 @@
 #include "marching_cubes.hpp"
-
+#include <iostream>
 namespace MarchingCubes
 {
     int calcCubeIndex(GridCell &cell, float isovalue){
@@ -32,10 +32,8 @@ namespace MarchingCubes
     
     std::vector<glm::vec3> triangles(std::vector<glm::vec3> &intersections, int cubeIndex){
         std::vector<glm::vec3> triangles;
-        for(int i = 0; MarchingCubes::triTable[cubeIndex][i] != -1; i+=3){
+        for(int i = 0; MarchingCubes::triTable[cubeIndex][i] != -1; i++){
             triangles.push_back(intersections[triTable[cubeIndex][i]]);
-            triangles.push_back(intersections[triTable[cubeIndex][i+1]]);
-            triangles.push_back(intersections[triTable[cubeIndex][i+2]]);
         }
         return triangles;
     }
@@ -76,5 +74,34 @@ namespace MarchingCubes
         }
     
         return triangles;
+    }
+
+    void triangulate_grid_steps(Grid<float> &grid, float isovalue, std::function<bool(std::vector<glm::vec3> &data)> step_callback){
+        glm::uvec3 grid_size = grid.getSize();
+    
+        for(int z = 0; z + 1 < grid_size.z; z++){
+            for(int y = 0; y + 1 < grid_size.y; y++){
+                for(int x = 0; x + 1 < grid_size.x; x++){
+                    
+                    glm::vec3 p(x,y,z);
+    
+                    MarchingCubes::GridCell cell{ .v{
+                        {p.x,      p.y,      p.z,      grid(x,  y  ,z  )},
+                        {p.x+1.0f, p.y,      p.z,      grid(x+1,y  ,z  )},
+                        {p.x+1.0f, p.y,      p.z+1.0f, grid(x+1,y  ,z+1)},
+                        {p.x,      p.y,      p.z+1.0f, grid(x  ,y  ,z+1)},
+                        {p.x,      p.y+1.0f, p.z,      grid(x  ,y+1,z  )},
+                        {p.x+1.0f, p.y+1.0f, p.z,      grid(x+1,y+1,z  )},
+                        {p.x+1.0f, p.y+1.0f, p.z+1.0f, grid(x+1,y+1,z+1)},
+                        {p.x,      p.y+1.0f, p.z+1.0f, grid(x  ,y+1,z+1)}
+                    }};
+    
+                    std::vector<glm::vec3> cell_trinagles = MarchingCubes::trinagulate_cell(cell, isovalue);
+                    if(cell_trinagles.size() > 0){
+                        if(step_callback(cell_trinagles)) return;
+                    }
+                }
+            }
+        }
     }
 }
