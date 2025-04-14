@@ -11,7 +11,7 @@ Camera::Camera(glm::vec3 pos, glm::vec3 dir, float fov, float far, float ratio) 
     rotxy(0.0f),
     lookCenter(0.0f),
     ang_vel_dir(0.0f), 
-    dist(10.0f),
+    dist(50.0f),
     scroll_mul(1.0f),
     rot_drag(false),
     move_drag(false),
@@ -110,7 +110,7 @@ void Camera::handle_mouse_button_event(int button, int action, int mods){
 }
 
 void Camera::handle_scroll_event(double xoff, double yoff){
-    dist = glm::clamp(dist - static_cast<float>(yoff) * scroll_mul, 3.0f, 20.0f);
+    dist = glm::clamp(dist - static_cast<float>(yoff) * scroll_mul, 10.0f, 100.0f);
 }
 
 void Camera::handle_mouse_pos_event(double xrel, double yrel){

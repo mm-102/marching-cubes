@@ -6,6 +6,9 @@
 #include <window_manager.hpp>
 #include <camera.hpp>
 #include <triangles.hpp>
+#include <generator.hpp>
+#include <marching_cubes.hpp>
+#include <grid.hpp>
 
 int main(){
 	WindowManager windowManager(1024, 720, "Marching Cubes");
@@ -14,16 +17,29 @@ int main(){
 		exit(EXIT_FAILURE);
 	}
 
-	Camera camera(glm::vec3(0.0f,0.0f,-10.0f), glm::vec3(0.0f,0.0f,1.0f), 0.873f, 50.0f, windowManager.get_size_ratio());
+	Camera camera(glm::vec3(0.0f,0.0f,-50.0f), glm::vec3(0.0f,0.0f,1.0f), 0.873f, 100.0f, windowManager.get_size_ratio());
 
-	std::shared_ptr<RenderableObject> triangles(new Triangles(3 * 10));
+	std::cout << "start gen" << std::endl;
+	Generator gen(glm::uvec3(100));
+
+	glm::vec3 sphereCenter = glm::vec3(50.0f);
+	Grid<float> sphereGrid = gen.genSphere(sphereCenter, 25.0f);
+	std::cout << "sphere generated" << std::endl;
+
+	std::vector<glm::vec3> test_data = MarchingCubes::trinagulate_grid(sphereGrid, 0.0f);
+	std::cout << "sphere triangulated " << test_data.size() << std::endl;
+		
+	std::vector<glm::vec3> old_test = {
+		{0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f},
+		{0.0f, 0.0f, 2.0f}, {1.0f, 1.0f, 2.0f}, {0.0f, 1.0f, 2.0f},
+		{-1.0f, 0.0f, -1.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}
+	};
+	glm::mat4 M = glm::translate(glm::mat4(1.0f), -sphereCenter);
+	std::shared_ptr<Triangles> triangles(new Triangles(test_data.size(), M));
 	windowManager.add_object(triangles);
 
-	std::vector<float> test_data = {
-		0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f,
-		0.0f, 0.0f, 2.0f, 1.0f, 1.0f, 2.0f, 0.0f, 1.0f, 2.0f,
-		-1.0f, 0.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f};
-	static_cast<Triangles*>(triangles.get())->add_verticies(test_data);
+	// static_cast<Triangles*>(triangles.get())->add_verticies(old_test);
+	triangles -> add_verticies(test_data);
 
 	windowManager.attach_resize_callback([&](int w, int h, int ratio){camera.updateWindowRatio(ratio);});
 	windowManager.attach_mouse_pos_callback([&](double xrel, double yrel){camera.handle_mouse_pos_event(xrel,yrel);});

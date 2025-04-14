@@ -11,15 +11,18 @@ class Triangles : public RenderableObject{
     unsigned bufferSize = 0;
     unsigned maxSize;
 
+    glm::mat4 M;
+
 public:
-    Triangles(unsigned max_size);
+    Triangles(unsigned max_size, glm::mat4 M);
 
     virtual void draw(ShaderProgram &shader);
 
     // auto calculate normals
-    void add_verticies(const std::vector<float> &data);
+    void add_verticies(const std::vector<glm::vec3> &data);
 
-    void add_verticies(const std::vector<float> &vert_data, const std::vector<float> &norm_data);
+    void add_verticies(const std::vector<glm::vec3> &vert_data, const std::vector<glm::vec3> &norm_data);
 
     glm::vec4 getModulate() { return glm::vec4(1.0f, 0.3f, 0.2f, 1.0f); };
+    glm::mat4 getModelMatrix() { return M; };
 };
