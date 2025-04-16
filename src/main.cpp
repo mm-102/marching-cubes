@@ -13,8 +13,7 @@
 #include <marching_cubes.hpp>
 #include <grid.hpp>
 
-#include <omp.h>
-std::vector<std::vector<glm::vec3>> triangle_buf(omp_get_max_threads(), std::vector<glm::vec3>());
+std::vector<glm::vec3> triangle_buf;
 std::mutex triangle_buf_mut;
 std::atomic_bool should_stop{false};
 
@@ -24,18 +23,14 @@ void march(Grid<float> &grid, float isovalue){
 
 void use_triangle_buf(std::shared_ptr<Triangles> &triangles){
 	std::lock_guard<std::mutex> lock(triangle_buf_mut);
-	for(auto &vec : triangle_buf){
-		if(!vec.empty()){
-			triangles->add_verticies(vec);
-			vec.clear();
-		}
+	if(!triangle_buf.empty()){
+		triangles->add_verticies(triangle_buf);
+		triangle_buf.clear();
 	}
 }
 
 int main(){
 	WindowManager windowManager(1024, 720, "Marching Cubes");
-
-	std::cout << "Max omp threads: " << omp_get_max_threads() << std::endl;
 
 	if(!windowManager.init()){
 		exit(EXIT_FAILURE);

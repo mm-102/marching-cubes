@@ -14,14 +14,14 @@
 
 namespace MarchingCubes
 {
-    const static glm::uvec2 edgeToVertices[12] = 
+    constexpr glm::uvec2 edgeToVertices[12] = 
     {
         {0, 1}, {1, 2}, {2, 3}, {0, 3},
         {4, 5}, {5, 6}, {6, 7}, {4, 7},
         {0, 4}, {1, 5}, {2, 6}, {3, 7}
     };
     
-    const static int edgeTable[256] =
+    constexpr int edgeTable[256] =
     {
         0x0  , 0x109, 0x203, 0x30a, 0x406, 0x50f, 0x605, 0x70c,
         0x80c, 0x905, 0xa0f, 0xb06, 0xc0a, 0xd03, 0xe09, 0xf00,
@@ -57,7 +57,7 @@ namespace MarchingCubes
         0x70c, 0x605, 0x50f, 0x406, 0x30a, 0x203, 0x109, 0x0   
     };
 
-    const int triTable[256][16] =
+    constexpr int triTable[256][16] =
     {
         {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
         {0, 8, 3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
@@ -333,5 +333,5 @@ namespace MarchingCubes
     
     std::vector<glm::vec3> trinagulate_grid(Grid<float> &grid, float isovalue);
 
-    void triangulate_grid_to_vec(Grid<float> &grid, float isovalue, std::vector<std::vector<glm::vec3>> &vec, std::mutex &mut, std::atomic_bool &should_stop);
+    void triangulate_grid_to_vec(Grid<float> &grid, float isovalue, std::vector<glm::vec3> &vec, std::mutex &mut, std::atomic_bool &should_stop);
 }
