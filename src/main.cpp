@@ -3,6 +3,8 @@
 #include <memory>
 #include <vector>
 #include <thread>
+#include <mutex>
+#include <atomic>
 #include <functional>
 #include <window_manager.hpp>
 #include <camera.hpp>
@@ -11,8 +13,29 @@
 #include <marching_cubes.hpp>
 #include <grid.hpp>
 
+#include <omp.h>
+std::vector<std::vector<glm::vec3>> triangle_buf(omp_get_max_threads(), std::vector<glm::vec3>());
+std::mutex triangle_buf_mut;
+std::atomic_bool should_stop{false};
+
+void march(Grid<float> &grid, float isovalue){
+	MarchingCubes::triangulate_grid_to_vec(grid, isovalue, triangle_buf, triangle_buf_mut, should_stop);
+}
+
+void use_triangle_buf(std::shared_ptr<Triangles> &triangles){
+	std::lock_guard<std::mutex> lock(triangle_buf_mut);
+	for(auto &vec : triangle_buf){
+		if(!vec.empty()){
+			triangles->add_verticies(vec);
+			vec.clear();
+		}
+	}
+}
+
 int main(){
 	WindowManager windowManager(1024, 720, "Marching Cubes");
+
+	std::cout << "Max omp threads: " << omp_get_max_threads() << std::endl;
 
 	if(!windowManager.init()){
 		exit(EXIT_FAILURE);
@@ -25,15 +48,12 @@ int main(){
 
 	glm::vec3 sphereCenter = glm::vec3(50.0f);
 	// Grid<float> sphereGrid = gen.genSphere(sphereCenter, 25.0f);
-	Grid<float> sphereGrid = gen.genTorus(sphereCenter, 5.0f, 25.0f);
+	Grid<float> sphereGrid = gen.genTorus(sphereCenter, 8.0f, 25.0f);
 	std::cout << "sphere generated" << std::endl;
 
 	glm::mat4 M = glm::translate(glm::mat4(1.0f), -sphereCenter);
 	std::shared_ptr<Triangles> triangles(new Triangles(80000, M));
 	windowManager.add_object(triangles);
-
-	// std::thread marching_thread(march, std::ref(triangles), std::ref(sphereGrid), 0.0f);
-	// std::thread marching_thread(march2, std::ref(windowManager));
 	
 	// std::vector<glm::vec3> test_data = MarchingCubes::trinagulate_grid(sphereGrid, 0.0f);
 	// std::cout << "sphere triangulated " << test_data.size() << std::endl;
@@ -52,26 +72,18 @@ int main(){
 	windowManager.attach_scroll_callback([&](double xoff, double yoff){camera.handle_scroll_event(xoff,yoff);});
 	windowManager.attach_key_callback([&](int key,int scancode, int action, int mods){camera.handle_key_event(key,action,mods);});
 
-	std::cout << "Started triangulating" << std::endl;
+	std::thread marching_thread(march, std::ref(sphereGrid), 0.0f);
+	
 	float delta = 0.0f;
-	int vertC = 0;
-	MarchingCubes::triangulate_grid_steps(sphereGrid, 0.0f, [&](std::vector<glm::vec3> &data){
-		delta = windowManager.getDelta();
-		triangles-> add_verticies(data);
-		camera.update(delta);
-		windowManager.draw_scene(camera);
-		windowManager.poll_events();
-		vertC += data.size();
-		return windowManager.should_close();
-	});
-	std::cout << "Finished triangulating: " << vertC / 3 << " trinagles" << std::endl;
-
 	while(!windowManager.should_close()){
 		delta = windowManager.getDelta();
 		camera.update(delta);
 		windowManager.draw_scene(camera);
 		windowManager.poll_events();
+		use_triangle_buf(triangles);
 	}
+	should_stop = true;
+	marching_thread.join();
 
     return EXIT_SUCCESS;
 }

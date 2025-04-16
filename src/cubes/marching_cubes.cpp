@@ -1,5 +1,7 @@
 #include "marching_cubes.hpp"
 #include <iostream>
+#include <omp.h>
+#include <chrono>
 namespace MarchingCubes
 {
     int calcCubeIndex(GridCell &cell, float isovalue){
@@ -75,8 +77,8 @@ namespace MarchingCubes
     
         return triangles;
     }
-
-    void triangulate_grid_steps(Grid<float> &grid, float isovalue, std::function<bool(std::vector<glm::vec3> &data)> step_callback){
+    
+    void triangulate_grid_to_vec(Grid<float> &grid, float isovalue, std::vector<std::vector<glm::vec3>> &vec, std::mutex &mut, std::atomic_bool &should_stop){        
         glm::uvec3 grid_size = grid.getSize();
     
         for(int z = 0; z + 1 < grid_size.z; z++){
@@ -95,11 +97,17 @@ namespace MarchingCubes
                         {p.x+1.0f, p.y+1.0f, p.z+1.0f, grid(x+1,y+1,z+1)},
                         {p.x,      p.y+1.0f, p.z+1.0f, grid(x  ,y+1,z+1)}
                     }};
-    
+                    
                     std::vector<glm::vec3> cell_trinagles = MarchingCubes::trinagulate_cell(cell, isovalue);
-                    if(cell_trinagles.size() > 0){
-                        if(step_callback(cell_trinagles)) return;
+                    int pid = omp_get_thread_num();
+                    if(!cell_trinagles.empty()){
+                        std::this_thread::sleep_for(std::chrono::duration<double>{0.001});
+                        std::lock_guard<std::mutex> lock(mut);
+                        vec[pid].reserve(vec[pid].size() + cell_trinagles.size());  
+                        vec[pid].insert(vec[pid].end(), cell_trinagles.begin(), cell_trinagles.end());
                     }
+                    if(should_stop)
+                        return;
                 }
             }
         }
