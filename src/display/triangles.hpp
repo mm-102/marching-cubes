@@ -5,6 +5,7 @@
 #include <vector>
 
 class Triangles : public RenderableObject{
+protected:
     GLuint VAO = 0;
     GLuint VBO1 = 0, VBO2 = 0;
 
