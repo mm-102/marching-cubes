@@ -15,8 +15,8 @@ uniform vec3 uSpecularLight = vec3(1.0);
 void main(){
     vec3 viewDir = normalize(uCamera-vPos);
     vec3 lightDir = normalize(-uCamera); // light from camera to (0,0,0)
-    // float diff = max(dot(vNorm, lightDir), 0.0);
-    float diff = abs(dot(vNorm, lightDir)); // temp until proper normal calc
+    float diff = max(dot(-vNorm, lightDir), 0.0);
+    // float diff = abs(dot(vNorm, lightDir)); // temp until proper normal calc
     vec3 reflectDir = reflect(lightDir, vNorm);
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
 
