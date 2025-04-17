@@ -91,7 +91,7 @@ namespace MarchingCubes
                     if(should_stop){ // kind of janky
                         y = grid_size.y;
                         x = grid_size.x;
-                        continue;
+                        break;
                     }
 
                     glm::vec3 p(x,y,z);
