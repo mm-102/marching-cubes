@@ -2,6 +2,7 @@
 #include <iostream>
 #include <omp.h>
 #include <chrono>
+#include <functional>
 namespace MarchingCubes
 {
     inline int calcCubeIndex(GridCell &cell, float isovalue){
@@ -47,11 +48,18 @@ namespace MarchingCubes
     }
     
     std::vector<glm::vec3> trinagulate_grid(Grid<float> &grid, float isovalue){
+        #pragma omp declare reduction(merge : std::vector<glm::vec3> : \
+            omp_out.insert(omp_out.end(), omp_in.begin(), omp_in.end()))
+
+        const glm::uvec3 grid_size = grid.getSize();
+        const unsigned res = grid_size.x * grid_size.y * grid_size.z / 9;
+        
         std::vector<glm::vec3> triangles;
-    
-        glm::uvec3 grid_size = grid.getSize();
-    
-        for(int z = 0; z + 1 < grid_size.z; z++){
+        triangles.reserve(res);
+        const int max_z = grid_size.z - 1;
+        
+        #pragma omp parallel for reduction(merge: triangles)
+        for(int z = 0; z < max_z; z++){
             for(int y = 0; y + 1 < grid_size.y; y++){
                 for(int x = 0; x + 1 < grid_size.x; x++){
                     
@@ -67,8 +75,10 @@ namespace MarchingCubes
                         {p.x+1.0f, p.y+1.0f, p.z+1.0f, grid(x+1,y+1,z+1)},
                         {p.x,      p.y+1.0f, p.z+1.0f, grid(x  ,y+1,z+1)}
                     }};
-    
                     std::vector<glm::vec3> cell_trinagles = MarchingCubes::trinagulate_cell(cell, isovalue);
+                    if(triangles.capacity() < triangles.size() + cell_trinagles.size()){
+                        triangles.reserve(triangles.capacity() + res / omp_get_num_threads());
+                    }
                     triangles.reserve(triangles.size() + cell_trinagles.size());
                     triangles.insert(triangles.end(), cell_trinagles.begin(), cell_trinagles.end());
                 }
@@ -81,10 +91,10 @@ namespace MarchingCubes
     void triangulate_grid_to_vec(Grid<float> &grid, float isovalue, std::vector<glm::vec3> &vec, std::mutex &mut, std::atomic_bool &should_stop){        
         const glm::uvec3 grid_size = grid.getSize();
         const int max_z = grid_size.z - 1;
+        const unsigned res = grid_size.x * grid_size.y * grid_size.z / 10;
 
-        #pragma omp parallel for
+        #pragma omp parallel for schedule(static)
         for(int z = 0; z < max_z; z++){
-            // std::cout << omp_get_thread_num() << " " << z << std::endl;
             for(int y = 0; y + 1 < grid_size.y; y++){
                 for(int x = 0; x + 1 < grid_size.x; x++){
                     
@@ -106,11 +116,14 @@ namespace MarchingCubes
                         {p.x+1.0f, p.y+1.0f, p.z+1.0f, grid(x+1,y+1,z+1)},
                         {p.x,      p.y+1.0f, p.z+1.0f, grid(x  ,y+1,z+1)}
                     }};
-                    
+
                     std::vector<glm::vec3> cell_trinagles = MarchingCubes::trinagulate_cell(cell, isovalue);
                     if(!cell_trinagles.empty()){
-                        std::this_thread::sleep_for(std::chrono::duration<double>{0.001});
+                        // std::this_thread::sleep_for(std::chrono::duration<double>{0.0001});
                         std::lock_guard<std::mutex> lock(mut);
+                        if(vec.capacity() < vec.size() + cell_trinagles.size()){
+                            vec.reserve(vec.capacity() + res);
+                        }
                         vec.reserve(vec.size() + cell_trinagles.size());  
                         vec.insert(vec.end(), cell_trinagles.begin(), cell_trinagles.end());
                     }

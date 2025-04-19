@@ -1,5 +1,6 @@
 #include "triangles.hpp"
 #include <iostream>
+#include <glm/gtc/type_ptr.hpp>
 
 Triangles::Triangles(unsigned max_size, glm::mat4 M) : maxSize(max_size), M(M){
     glGenVertexArrays(1, &VAO);
@@ -65,6 +66,8 @@ void Triangles::add_verticies(const std::vector<glm::vec3> &data){
 }
 
 void Triangles::draw(ShaderProgram &shader){
+    const static glm::vec4 inside_modulate(0.2f, 0.3f, 1.0f, 1.0f);
+    glUniform4fv(shader.u("uInModulate"), 1, glm::value_ptr(inside_modulate));
     glBindVertexArray(VAO);
     glDrawArrays(GL_TRIANGLES, 0, bufferSize);
     glBindVertexArray(0);

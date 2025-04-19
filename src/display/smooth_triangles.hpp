@@ -6,14 +6,14 @@ class SmoothTriangles: public Triangles{
 
     struct Vec3ApproxEqual {
         bool operator()(const glm::vec3& a, const glm::vec3& b) const {
-            const float epsilon = 1e-5f;
+            const float epsilon = 1e-7f;
             return glm::all(glm::lessThan(glm::abs(a - b), glm::vec3(epsilon)));
         }
     };
 
     struct Vec3ApproxHasher {
         std::size_t operator()(const glm::vec3& v) const {
-            const static float gridSize = 1e4f;
+            const static float gridSize = 1e6f;
             const glm::ivec3 vg(v * gridSize);
     
             std::size_t hx = std::hash<int>{}(vg.x);

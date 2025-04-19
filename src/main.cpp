@@ -5,6 +5,7 @@
 #include <thread>
 #include <mutex>
 #include <atomic>
+#include <chrono>
 #include <functional>
 #include <window_manager.hpp>
 #include <camera.hpp>
@@ -41,31 +42,44 @@ void use_triangle_buf_smooth(std::shared_ptr<SmoothTriangles> &triangles){
 }
 
 int main(){
+
 	WindowManager windowManager(1024, 720, "Marching Cubes");
 
 	if(!windowManager.init()){
 		exit(EXIT_FAILURE);
 	}
 
-	Camera camera(glm::vec3(0.0f,0.0f,-50.0f), glm::vec3(0.0f,0.0f,1.0f), 0.873f, 200.0f, windowManager.get_size_ratio());
-
 	std::cout << "start gen" << std::endl;
-	Generator gen(glm::uvec3(100));
+	glm::uvec3 gen_size = glm::uvec3(1000);
+	Generator gen(gen_size);
 
-	glm::vec3 sphereCenter = glm::vec3(50.0f);
+	glm::vec3 gridCenter = glm::vec3(gen_size) * 0.5f;
 	// Grid<float> sphereGrid = gen.genSphere(sphereCenter, 25.0f);
-	Grid<float> sphereGrid = gen.genTorus(sphereCenter, 8.0f, 25.0f);
-	std::cout << "sphere generated" << std::endl;
 
-	glm::mat4 M = glm::translate(glm::mat4(1.0f), -sphereCenter);
+	auto start = std::chrono::high_resolution_clock::now();
+
+	Grid<float> grid = gen.genTorus(gridCenter, 100.0f, 300.0f);
+
+	auto end = std::chrono::high_resolution_clock::now();
+	auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+	std::cout << "torus generated: " << duration.count()<< std::endl;
+
+
+	Camera camera(glm::vec3(0.0f), 1000.0f, 0.873f, 2000.0f, windowManager.get_size_ratio());
+
+
+
+	glm::mat4 M = glm::translate(glm::mat4(1.0f), -gridCenter);
 	// std::shared_ptr<Triangles> triangles(new Triangles(80000, M));
 	// windowManager.add_object(triangles);
 
-	std::shared_ptr<SmoothTriangles> triangles(new SmoothTriangles(80000, M));
+	// std::vector<glm::vec3> data = MarchingCubes::trinagulate_grid(grid, 0.5f);
+	// std::cout << "grid triangulated " << data.size() << std::endl;
+
+	std::shared_ptr<SmoothTriangles> triangles(new SmoothTriangles(10254912, M));
 	windowManager.add_object(triangles);
 
-	// std::vector<glm::vec3> data = MarchingCubes::trinagulate_grid(sphereGrid, 0.0f);
-	// triangles->add_verticies(data);
+	// triangles->add_verticies_no_draw(data);
 	// triangles->smooth();
 	
 	// std::vector<glm::vec3> test_data = MarchingCubes::trinagulate_grid(sphereGrid, 0.0f);
@@ -85,7 +99,7 @@ int main(){
 	windowManager.attach_scroll_callback([&](double xoff, double yoff){camera.handle_scroll_event(xoff,yoff);});
 	windowManager.attach_key_callback([&](int key,int scancode, int action, int mods){camera.handle_key_event(key,action,mods);});
 
-	std::thread marching_thread(march, std::ref(sphereGrid), 0.0f);
+	std::thread marching_thread(march, std::ref(grid), 0.5f);
 	
 	float delta = 0.0f;
 	bool smoothed = false;
@@ -98,8 +112,10 @@ int main(){
 		if(!smoothed){
 			use_triangle_buf_smooth(triangles);
 			if(march_finished){
+				use_triangle_buf_smooth(triangles);
 				triangles->smooth();
 				smoothed = true;
+				std::cout << "triangulated and smoothed" << std::endl;
 			}
 		}
 	}

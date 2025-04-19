@@ -5,13 +5,13 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-Camera::Camera(glm::vec3 pos, glm::vec3 dir, float fov, float far, float ratio) : 
-    pos(pos, 1.0f), 
-    dir(dir, 0.0f), 
+Camera::Camera(glm::vec3 lookCenter, float dist, float fov, float far, float ratio) : 
+    pos(lookCenter.x,lookCenter.y,lookCenter.z - dist, 1.0f), 
+    dir(0.0f,0.0f,1.0f, 0.0f), 
     rotxy(0.0f),
-    lookCenter(0.0f),
+    lookCenter(lookCenter),
     ang_vel_dir(0.0f), 
-    dist(50.0f),
+    dist(dist),
     scroll_mul(1.0f),
     rot_drag(false),
     move_drag(false),
@@ -21,7 +21,7 @@ Camera::Camera(glm::vec3 pos, glm::vec3 dir, float fov, float far, float ratio) 
     rot = glm::quat(0.0f, 0.0f, 0.0f, 1.0f);
     mouse_sensivity = 0.005;
     ang_vel_v = 5.0f;
-    V = glm::lookAt(pos, pos+dir, glm::vec3(0.0f,1.0f,0.0f));
+    V = glm::lookAt(glm::vec3(pos), lookCenter, glm::vec3(0.0f,1.0f,0.0f));
     updateWindowRatio(ratio);
 }
 
@@ -110,7 +110,7 @@ void Camera::handle_mouse_button_event(int button, int action, int mods){
 }
 
 void Camera::handle_scroll_event(double xoff, double yoff){
-    dist = glm::clamp(dist - static_cast<float>(yoff) * scroll_mul, 10.0f, 100.0f);
+    dist = glm::clamp(dist - static_cast<float>(yoff) * scroll_mul * std::log(dist), 10.0f, 1000.0f);
 }
 
 void Camera::handle_mouse_pos_event(double xrel, double yrel){
