@@ -15,69 +15,91 @@
 #include <marching_cubes.hpp>
 #include <grid.hpp>
 
-std::vector<glm::vec3> triangle_buf;
-std::mutex triangle_buf_mut;
+std::vector<glm::vec3> vertBuf, normBuf;
+std::mutex mut;
 std::atomic_bool should_stop{false};
 std::atomic_bool march_finished{false};
 
 void march(Grid<float> &grid, float isovalue){
-	MarchingCubes::triangulate_grid_to_vec(grid, isovalue, triangle_buf, triangle_buf_mut, should_stop);
+	MarchingCubes::triangulate_grid_mut(grid, isovalue, vertBuf, normBuf, mut, should_stop);
 	march_finished = true;
 }
 
-void use_triangle_buf(std::shared_ptr<Triangles> &triangles){
-	std::lock_guard<std::mutex> lock(triangle_buf_mut);
-	if(!triangle_buf.empty()){
-		triangles->add_verticies(triangle_buf);
-		triangle_buf.clear();
+void use_buf(std::shared_ptr<Triangles> &triangles){
+	std::lock_guard<std::mutex> lock(mut);
+	if(!vertBuf.empty()){
+		triangles->add_verticies(vertBuf, normBuf);
+		vertBuf.clear();
+		normBuf.clear();
 	}
 }
 
-void use_triangle_buf_smooth(std::shared_ptr<SmoothTriangles> &triangles){
-	std::lock_guard<std::mutex> lock(triangle_buf_mut);
-	if(!triangle_buf.empty()){
-		triangles->add_verticies(triangle_buf);
-		triangle_buf.clear();
-	}
-}
+// void use_triangle_buf(std::shared_ptr<Triangles> &triangles){
+// 	std::lock_guard<std::mutex> lock(triangle_buf_mut);
+// 	if(!triangle_buf.empty()){
+// 		triangles->add_verticies(triangle_buf);
+// 		triangle_buf.clear();
+// 	}
+// }
+
+// void use_triangle_buf_smooth(std::shared_ptr<SmoothTriangles> &triangles){
+// 	std::lock_guard<std::mutex> lock(triangle_buf_mut);
+// 	if(!triangle_buf.empty()){
+// 		triangles->add_verticies(triangle_buf);
+// 		triangle_buf.clear();
+// 	}
+// }
 
 int main(){
 
 	WindowManager windowManager(1024, 720, "Marching Cubes");
-
 	if(!windowManager.init()){
 		exit(EXIT_FAILURE);
 	}
-
+	
+	Camera camera(glm::vec3(0.0f), 1000.0f, 0.873f, 2000.0f, windowManager.get_size_ratio());
+	
 	std::cout << "start gen" << std::endl;
 	glm::uvec3 gen_size = glm::uvec3(1000);
 	Generator gen(gen_size);
-
+	
 	glm::vec3 gridCenter = glm::vec3(gen_size) * 0.5f;
 	// Grid<float> sphereGrid = gen.genSphere(sphereCenter, 25.0f);
-
+	
 	auto start = std::chrono::high_resolution_clock::now();
-
+	
 	Grid<float> grid = gen.genTorus(gridCenter, 100.0f, 300.0f);
-
+	
 	auto end = std::chrono::high_resolution_clock::now();
 	auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 	std::cout << "torus generated: " << duration.count()<< std::endl;
-
-
-	Camera camera(glm::vec3(0.0f), 1000.0f, 0.873f, 2000.0f, windowManager.get_size_ratio());
-
-
-
+	
 	glm::mat4 M = glm::translate(glm::mat4(1.0f), -gridCenter);
+
+	
+	std::shared_ptr<Triangles> triangles(new Triangles(10254912, M));
+	// std::vector<glm::vec3> vertData, normData;
+	
+	// start = std::chrono::high_resolution_clock::now();
+	// MarchingCubes::trinagulate_grid(grid, 0.5f, vertData, normData);
+	// end = std::chrono::high_resolution_clock::now();
+	// duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+	// std::cout << "torus triangulated: " << duration.count() << std::endl;
+	
+	
+	
+	windowManager.add_object(triangles);
+	// triangles->add_verticies(vertData,normData);
+
 	// std::shared_ptr<Triangles> triangles(new Triangles(80000, M));
 	// windowManager.add_object(triangles);
 
 	// std::vector<glm::vec3> data = MarchingCubes::trinagulate_grid(grid, 0.5f);
 	// std::cout << "grid triangulated " << data.size() << std::endl;
 
-	std::shared_ptr<SmoothTriangles> triangles(new SmoothTriangles(10254912, M));
-	windowManager.add_object(triangles);
+
+
+	// triangles->add_verticies(vertData);
 
 	// triangles->add_verticies_no_draw(data);
 	// triangles->smooth();
@@ -102,22 +124,13 @@ int main(){
 	std::thread marching_thread(march, std::ref(grid), 0.5f);
 	
 	float delta = 0.0f;
-	bool smoothed = false;
 	while(!windowManager.should_close()){
 		delta = windowManager.getDelta();
 		camera.update(delta);
 		windowManager.draw_scene(camera);
 		windowManager.poll_events();
 
-		if(!smoothed){
-			use_triangle_buf_smooth(triangles);
-			if(march_finished){
-				use_triangle_buf_smooth(triangles);
-				triangles->smooth();
-				smoothed = true;
-				std::cout << "triangulated and smoothed" << std::endl;
-			}
-		}
+		use_buf(triangles);
 	}
 	should_stop = true;
 	marching_thread.join();

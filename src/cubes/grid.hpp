@@ -26,7 +26,7 @@ public:
     }
     Grid(glm::uvec3 size, const std::vector<T> &initData) : m(size), data(initData){}
 
-    glm::uvec3 getSize(){
+    glm::uvec3 getSize() const{
         return m;
     }
 };

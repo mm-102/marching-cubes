@@ -317,21 +317,32 @@ namespace MarchingCubes
         {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}
     };
 
-    struct GridCell{
-        glm::vec4 v[8];
+    struct GridCellEle{
+        glm::vec3 p;
+        glm::vec3 g;
+        float v;
     };
+    using GridCell = std::array<GridCellEle,8>;
+    using PosGrad = std::pair<glm::vec3,glm::vec3>;
 
     int calcCubeIndex(GridCell &cell, float isovalue);
 
-    glm::vec3 interpolate(glm::vec4 v1, glm::vec4 v2, float isovalue);
+    glm::vec3 calcGrad(const Grid<float> &grid, int x, int y, int z);
 
-    std::vector<glm::vec3> intersection_coords(GridCell &cell, float isovalue, int cubeIndex);
+    PosGrad interpolate(GridCellEle &e1, GridCellEle &e2, float isovalue);
 
-    std::vector<glm::vec3> triangles(std::vector<glm::vec3> &intersections, int cubeIndex);
+    std::vector<PosGrad> intersection_coords(GridCell &cell, float isovalue, int cubeIndex);
 
-    std::vector<glm::vec3> trinagulate_cell(GridCell &cell, float isovalue);
+    void triangles(std::vector<PosGrad> &intersections, int cubeIndex,
+        std::vector<glm::vec3>& outVerts, std::vector<glm::vec3>& outNormals);
+
+    void trinagulate_cell(GridCell &cell, float isovalue,
+        std::vector<glm::vec3>& outVerts, std::vector<glm::vec3>& outNormals);
     
-    std::vector<glm::vec3> trinagulate_grid(Grid<float> &grid, float isovalue);
+    void trinagulate_grid(const Grid<float> &grid, float isovalue, 
+        std::vector<glm::vec3>& outVerts, std::vector<glm::vec3>& outNormals);
 
-    void triangulate_grid_to_vec(Grid<float> &grid, float isovalue, std::vector<glm::vec3> &vec, std::mutex &mut, std::atomic_bool &should_stop);
+    void triangulate_grid_mut(Grid<float> &grid, float isovalue, 
+        std::vector<glm::vec3>& outVerts, std::vector<glm::vec3>& outNormals, 
+        std::mutex &mut, std::atomic_bool &should_stop);
 }

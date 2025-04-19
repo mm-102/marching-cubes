@@ -8,127 +8,164 @@ namespace MarchingCubes
     inline int calcCubeIndex(GridCell &cell, float isovalue){
         int index = 0;
         for(int i = 0; i < 8; i++){
-            if(cell.v[i].w < isovalue) index |= (1 << i);
+            if(cell[i].v < isovalue) index |= (1 << i);
         }
         return index;
     }
-    
-    inline glm::vec3 interpolate(glm::vec4 v1, glm::vec4 v2, float isovalue){
-        float mu = (isovalue - v1.w) / (v2.w - v1.w);
-        return glm::vec3(glm::mix(v1, v2, mu));
+
+    inline glm::vec3 calcGrad(const Grid<float> &grid, int x, int y, int z){
+        glm::ivec3 size = glm::ivec3(grid.getSize()) - 1;
+
+        int xm = glm::clamp(x - 1, 0, size.x);
+        int xp = glm::clamp(x + 1, 0, size.x);
+        int ym = glm::clamp(y - 1, 0, size.y);
+        int yp = glm::clamp(y + 1, 0, size.y);
+        int zm = glm::clamp(z - 1, 0, size.z);
+        int zp = glm::clamp(z + 1, 0, size.z);
+
+        float dx = grid(xp, y, z) - grid(xm, y, z);
+        float dy = grid(x, yp, z) - grid(x, ym, z);
+        float dz = grid(x, y, zp) - grid(x, y, zm);
+
+        return glm::normalize(glm::vec3(dx, dy, dz));
+    }
+
+    inline PosGrad interpolate(GridCellEle &e1, GridCellEle &e2, float isovalue){
+        float mu = (isovalue - e1.v) / (e2.v - e1.v);
+        glm::vec3 pos = glm::mix(e1.p, e2.p, mu);
+        glm::vec3 grad = glm::normalize(glm::mix(e1.g, e2.g, mu));
+        return {pos, grad};
     }
     
-    inline std::vector<glm::vec3> intersection_coords(GridCell &cell, float isovalue, int cubeIndex){
-        std::vector<glm::vec3> intersections(12);
+    inline std::vector<PosGrad> intersection_coords(GridCell &cell, float isovalue, int cubeIndex){
+        std::vector<PosGrad> intersections(12);
     
         int intersectionsKey = edgeTable[cubeIndex];
-    
+
         for(int idx = 0; intersectionsKey; idx++, intersectionsKey >>= 1){
             if(intersectionsKey & 1){
                 glm::uvec2 v = edgeToVertices[idx];
-                intersections[idx] = interpolate(cell.v[v.x], cell.v[v.y], isovalue);
+                intersections[idx] = interpolate(cell[v.x], cell[v.y], isovalue);
             }
         }
     
         return intersections;
     }
-    
-    inline std::vector<glm::vec3> triangles(std::vector<glm::vec3> &intersections, int cubeIndex){
-        std::vector<glm::vec3> triangles;
-        for(int i = 0; MarchingCubes::triTable[cubeIndex][i] != -1; i++){
-            triangles.push_back(intersections[triTable[cubeIndex][i]]);
+
+    inline void triangles(std::vector<PosGrad> &intersections, int cubeIndex,
+            std::vector<glm::vec3>& outVerts, std::vector<glm::vec3>& outNormals){
+
+        for(int i = 0; triTable[cubeIndex][i] != -1; i++){
+            auto [pos, norm] = intersections[triTable[cubeIndex][i]];
+            outVerts.push_back(pos);
+            outNormals.push_back(norm);
         }
-        return triangles;
     }
-    
-    inline std::vector<glm::vec3> trinagulate_cell(GridCell &cell, float isovalue){
+
+    inline void trinagulate_cell(GridCell &cell, float isovalue,
+            std::vector<glm::vec3>& outVerts, std::vector<glm::vec3>& outNormals){
+
         int cubeIndex = calcCubeIndex(cell, isovalue);
-        std::vector<glm::vec3> intersections = intersection_coords(cell, isovalue, cubeIndex);
-        return triangles(intersections, cubeIndex);
+        std::vector<PosGrad> intersections = intersection_coords(cell, isovalue, cubeIndex);
+        triangles(intersections,cubeIndex,outVerts,outNormals);
     }
     
-    std::vector<glm::vec3> trinagulate_grid(Grid<float> &grid, float isovalue){
-        #pragma omp declare reduction(merge : std::vector<glm::vec3> : \
-            omp_out.insert(omp_out.end(), omp_in.begin(), omp_in.end()))
+    void trinagulate_grid(const Grid<float> &grid, float isovalue, 
+            std::vector<glm::vec3>& outVerts, std::vector<glm::vec3>& outNormals){
 
         const glm::uvec3 grid_size = grid.getSize();
         const unsigned res = grid_size.x * grid_size.y * grid_size.z / 9;
         
-        std::vector<glm::vec3> triangles;
-        triangles.reserve(res);
-        const int max_z = grid_size.z - 1;
+        outVerts.reserve(res);
+        outNormals.reserve(res);
         
-        #pragma omp parallel for reduction(merge: triangles)
-        for(int z = 0; z < max_z; z++){
-            for(int y = 0; y + 1 < grid_size.y; y++){
-                for(int x = 0; x + 1 < grid_size.x; x++){
-                    
-                    glm::vec3 p(x,y,z);
+        #pragma omp parallel
+        {
+            std::vector<glm::vec3> lVerts, lNorms;
+            lVerts.reserve(2 * res / omp_get_num_threads());
+            lNorms.reserve(2 * res / omp_get_num_threads());
+
+            #pragma omp for collapse(3) schedule(static) nowait
+            for(int z = 0; z < grid_size.z - 1; z++){
+                for(int y = 0; y < grid_size.y - 1; y++){
+                    for(int x = 0; x < grid_size.x - 1; x++){
+                        
+                        const glm::vec3 p(x,y,z);
     
-                    MarchingCubes::GridCell cell{ .v{
-                        {p.x,      p.y,      p.z,      grid(x,  y  ,z  )},
-                        {p.x+1.0f, p.y,      p.z,      grid(x+1,y  ,z  )},
-                        {p.x+1.0f, p.y,      p.z+1.0f, grid(x+1,y  ,z+1)},
-                        {p.x,      p.y,      p.z+1.0f, grid(x  ,y  ,z+1)},
-                        {p.x,      p.y+1.0f, p.z,      grid(x  ,y+1,z  )},
-                        {p.x+1.0f, p.y+1.0f, p.z,      grid(x+1,y+1,z  )},
-                        {p.x+1.0f, p.y+1.0f, p.z+1.0f, grid(x+1,y+1,z+1)},
-                        {p.x,      p.y+1.0f, p.z+1.0f, grid(x  ,y+1,z+1)}
-                    }};
-                    std::vector<glm::vec3> cell_trinagles = MarchingCubes::trinagulate_cell(cell, isovalue);
-                    if(triangles.capacity() < triangles.size() + cell_trinagles.size()){
-                        triangles.reserve(triangles.capacity() + res / omp_get_num_threads());
+                        GridCell cell{
+                            GridCellEle{ {p.x,      p.y,      p.z     }, calcGrad(grid, x,  y,  z  ), grid(x,  y,  z  ) },
+                            GridCellEle{ {p.x+1.0f, p.y,      p.z     }, calcGrad(grid, x+1,y,  z  ), grid(x+1,y,  z  ) },
+                            GridCellEle{ {p.x+1.0f, p.y,      p.z+1.0f}, calcGrad(grid, x+1,y,  z+1), grid(x+1,y,  z+1) },
+                            GridCellEle{ {p.x,      p.y,      p.z+1.0f}, calcGrad(grid, x,  y,  z+1), grid(x,  y,  z+1) },
+                            GridCellEle{ {p.x,      p.y+1.0f, p.z     }, calcGrad(grid, x,  y+1,z  ), grid(x,  y+1,z  ) },
+                            GridCellEle{ {p.x+1.0f, p.y+1.0f, p.z     }, calcGrad(grid, x+1,y+1,z  ), grid(x+1,y+1,z  ) },
+                            GridCellEle{ {p.x+1.0f, p.y+1.0f, p.z+1.0f}, calcGrad(grid, x+1,y+1,z+1), grid(x+1,y+1,z+1) },
+                            GridCellEle{ {p.x,      p.y+1.0f, p.z+1.0f}, calcGrad(grid, x,  y+1,z+1), grid(x,  y+1,z+1) }
+                        };
+    
+                        trinagulate_cell(cell, isovalue, lVerts, lNorms);
+                        
                     }
-                    triangles.reserve(triangles.size() + cell_trinagles.size());
-                    triangles.insert(triangles.end(), cell_trinagles.begin(), cell_trinagles.end());
                 }
             }
+
+            #pragma omp critical
+            {
+                outVerts.insert(outVerts.end(), lVerts.begin(), lVerts.end());
+                outNormals.insert(outNormals.end(), lNorms.begin(), lNorms.end());
+            }
         }
-    
-        return triangles;
+
+
     }
     
-    void triangulate_grid_to_vec(Grid<float> &grid, float isovalue, std::vector<glm::vec3> &vec, std::mutex &mut, std::atomic_bool &should_stop){        
+    void triangulate_grid_mut(Grid<float> &grid, float isovalue, 
+            std::vector<glm::vec3>& outVerts, std::vector<glm::vec3>& outNormals, 
+            std::mutex &mut, std::atomic_bool &should_stop){
+            
         const glm::uvec3 grid_size = grid.getSize();
-        const int max_z = grid_size.z - 1;
-        const unsigned res = grid_size.x * grid_size.y * grid_size.z / 10;
+        const unsigned res = grid_size.x * grid_size.y * grid_size.z / 9;
+        {
+            std::lock_guard<std::mutex> lock(mut);
+            outVerts.reserve(res);
+            outNormals.reserve(res);
+        }
 
-        #pragma omp parallel for schedule(static)
-        for(int z = 0; z < max_z; z++){
-            for(int y = 0; y + 1 < grid_size.y; y++){
-                for(int x = 0; x + 1 < grid_size.x; x++){
-                    
-                    if(should_stop){ // kind of janky
-                        y = grid_size.y;
-                        x = grid_size.x;
-                        break;
-                    }
+        #pragma omp parallel
+        {
+            std::vector<glm::vec3> lVerts, lNorms;
 
-                    glm::vec3 p(x,y,z);
+            #pragma omp for collapse(3) schedule(static) nowait
+            for(int z = 0; z < grid_size.z - 1; z++){
+                for(int y = 0; y < grid_size.y - 1; y++){
+                    for(int x = 0; x < grid_size.x - 1; x++){
+                        
+                        const glm::vec3 p(x,y,z);
     
-                    MarchingCubes::GridCell cell{ .v{
-                        {p.x,      p.y,      p.z,      grid(x,  y  ,z  )},
-                        {p.x+1.0f, p.y,      p.z,      grid(x+1,y  ,z  )},
-                        {p.x+1.0f, p.y,      p.z+1.0f, grid(x+1,y  ,z+1)},
-                        {p.x,      p.y,      p.z+1.0f, grid(x  ,y  ,z+1)},
-                        {p.x,      p.y+1.0f, p.z,      grid(x  ,y+1,z  )},
-                        {p.x+1.0f, p.y+1.0f, p.z,      grid(x+1,y+1,z  )},
-                        {p.x+1.0f, p.y+1.0f, p.z+1.0f, grid(x+1,y+1,z+1)},
-                        {p.x,      p.y+1.0f, p.z+1.0f, grid(x  ,y+1,z+1)}
-                    }};
-
-                    std::vector<glm::vec3> cell_trinagles = MarchingCubes::trinagulate_cell(cell, isovalue);
-                    if(!cell_trinagles.empty()){
-                        // std::this_thread::sleep_for(std::chrono::duration<double>{0.0001});
-                        std::lock_guard<std::mutex> lock(mut);
-                        if(vec.capacity() < vec.size() + cell_trinagles.size()){
-                            vec.reserve(vec.capacity() + res);
+                        GridCell cell{
+                            GridCellEle{ {p.x,      p.y,      p.z     }, calcGrad(grid, x,  y,  z  ), grid(x,  y,  z  ) },
+                            GridCellEle{ {p.x+1.0f, p.y,      p.z     }, calcGrad(grid, x+1,y,  z  ), grid(x+1,y,  z  ) },
+                            GridCellEle{ {p.x+1.0f, p.y,      p.z+1.0f}, calcGrad(grid, x+1,y,  z+1), grid(x+1,y,  z+1) },
+                            GridCellEle{ {p.x,      p.y,      p.z+1.0f}, calcGrad(grid, x,  y,  z+1), grid(x,  y,  z+1) },
+                            GridCellEle{ {p.x,      p.y+1.0f, p.z     }, calcGrad(grid, x,  y+1,z  ), grid(x,  y+1,z  ) },
+                            GridCellEle{ {p.x+1.0f, p.y+1.0f, p.z     }, calcGrad(grid, x+1,y+1,z  ), grid(x+1,y+1,z  ) },
+                            GridCellEle{ {p.x+1.0f, p.y+1.0f, p.z+1.0f}, calcGrad(grid, x+1,y+1,z+1), grid(x+1,y+1,z+1) },
+                            GridCellEle{ {p.x,      p.y+1.0f, p.z+1.0f}, calcGrad(grid, x,  y+1,z+1), grid(x,  y+1,z+1) }
+                        };
+    
+                        trinagulate_cell(cell, isovalue, lVerts, lNorms);
+                        
+                        if(!lVerts.empty()){
+                            std::lock_guard<std::mutex> lock(mut);
+                            outVerts.insert(outVerts.end(), lVerts.begin(), lVerts.end());
+                            outNormals.insert(outNormals.end(), lNorms.begin(), lNorms.end());
                         }
-                        vec.reserve(vec.size() + cell_trinagles.size());  
-                        vec.insert(vec.end(), cell_trinagles.begin(), cell_trinagles.end());
+                        lVerts.clear();
+                        lNorms.clear();
                     }
                 }
             }
         }
+
     }
 }
