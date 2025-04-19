@@ -20,6 +20,7 @@ void main(){
 
     float d = dot(vNorm, lightDir);
     float diff = abs(d);
+    // float diff = max(d, 0.0f);
 
     vec3 reflectDir = reflect(-lightDir, vNorm);
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);

@@ -57,18 +57,19 @@ int main(){
 		exit(EXIT_FAILURE);
 	}
 	
-	Camera camera(glm::vec3(0.0f), 1000.0f, 0.873f, 2000.0f, windowManager.get_size_ratio());
+	Camera camera(glm::vec3(0.0f), 100.0f, 0.873f, 2000.0f, windowManager.get_size_ratio());
 	
 	std::cout << "start gen" << std::endl;
-	glm::uvec3 gen_size = glm::uvec3(1000);
+	glm::uvec3 gen_size = glm::uvec3(100);
 	Generator gen(gen_size);
 	
 	glm::vec3 gridCenter = glm::vec3(gen_size) * 0.5f;
-	// Grid<float> sphereGrid = gen.genSphere(sphereCenter, 25.0f);
 	
 	auto start = std::chrono::high_resolution_clock::now();
 	
-	Grid<float> grid = gen.genTorus(gridCenter, 100.0f, 300.0f);
+	// Grid<float> grid = gen.genTorus(gridCenter, 10.0f, 30.0f);
+	// Grid<float> grid = gen.genSphere(gridCenter, 30.0f);
+	// Grid<float> grid = gen.genGyroid(20.0f);
 	
 	auto end = std::chrono::high_resolution_clock::now();
 	auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
@@ -78,18 +79,18 @@ int main(){
 
 	
 	std::shared_ptr<Triangles> triangles(new Triangles(10254912, M));
-	// std::vector<glm::vec3> vertData, normData;
+	std::vector<glm::vec3> vertData, normData;
 	
-	// start = std::chrono::high_resolution_clock::now();
-	// MarchingCubes::trinagulate_grid(grid, 0.5f, vertData, normData);
-	// end = std::chrono::high_resolution_clock::now();
-	// duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-	// std::cout << "torus triangulated: " << duration.count() << std::endl;
+	start = std::chrono::high_resolution_clock::now();
+	MarchingCubes::trinagulate_grid(grid, 0.0f, vertData, normData);
+	end = std::chrono::high_resolution_clock::now();
+	duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+	std::cout << "torus triangulated: " << duration.count() << std::endl;
 	
 	
 	
 	windowManager.add_object(triangles);
-	// triangles->add_verticies(vertData,normData);
+	triangles->add_verticies(vertData,normData);
 
 	// std::shared_ptr<Triangles> triangles(new Triangles(80000, M));
 	// windowManager.add_object(triangles);
@@ -121,7 +122,7 @@ int main(){
 	windowManager.attach_scroll_callback([&](double xoff, double yoff){camera.handle_scroll_event(xoff,yoff);});
 	windowManager.attach_key_callback([&](int key,int scancode, int action, int mods){camera.handle_key_event(key,action,mods);});
 
-	std::thread marching_thread(march, std::ref(grid), 0.5f);
+	// std::thread marching_thread(march, std::ref(grid), 0.5f);
 	
 	float delta = 0.0f;
 	while(!windowManager.should_close()){
@@ -133,7 +134,7 @@ int main(){
 		use_buf(triangles);
 	}
 	should_stop = true;
-	marching_thread.join();
+	// marching_thread.join();
 
     return EXIT_SUCCESS;
 }
