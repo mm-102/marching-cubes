@@ -1,9 +1,10 @@
-#include "marching_cubes.hpp"
+#include "marching_cubes_grad.hpp"
+#include "marching_cubes_common.hpp"
 #include <iostream>
 #include <omp.h>
 #include <chrono>
-#include <functional>
-namespace MarchingCubes
+
+namespace MarchingCubesGrad
 {
     inline int calcCubeIndex(GridCell &cell, float isovalue){
         int index = 0;
