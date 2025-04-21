@@ -35,5 +35,5 @@ namespace MarchingCubesGrad
 
     void triangulate_grid_mut(Grid<float> &grid, float isovalue, 
         std::vector<glm::vec3>& outVerts, std::vector<glm::vec3>& outNormals, 
-        std::mutex &mut, std::atomic_bool &should_stop);
+        std::mutex &mut, std::atomic_bool &should_stop, double delay);
 }

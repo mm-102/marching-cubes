@@ -46,11 +46,11 @@ Grid<float> Generator::genTorus(glm::vec3 center, float r_minor, float r_major){
         for(int y = 0; y < grid_size.y; y++){
             #pragma omp simd
             for(int x = 0; x < grid_size.x; x++){
-                const glm::vec3 to_center = glm::vec3(x,z,y) - center;
-                const glm::vec2 xy = glm::vec2(to_center);
-                float leftSide = r_major - glm::length(xy);
+                const glm::vec3 to_center = glm::vec3(x,y,z) - center;
+                const glm::vec2 xz = glm::vec2(to_center.x, to_center.z);
+                float leftSide = r_major - glm::length(xz);
                 leftSide *= leftSide;
-                leftSide += to_center.z * to_center.z;
+                leftSide += to_center.y * to_center.y;
                 torus(x,y,z) = rSquared - leftSide;
             }
         }

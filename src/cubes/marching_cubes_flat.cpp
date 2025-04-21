@@ -111,7 +111,7 @@ namespace MarchingCubesFlat
     
     void triangulate_grid_mut(Grid<float> &grid, float isovalue, 
             std::vector<glm::vec3>& outVerts, std::vector<glm::vec3>& outNormals, 
-            std::mutex &mut, std::atomic_bool &should_stop){
+            std::mutex &mut, std::atomic_bool &should_stop, double delay){
             
         const glm::uvec3 grid_size = grid.getSize();
         const unsigned res = grid_size.x * grid_size.y * grid_size.z / 9;
@@ -129,6 +129,9 @@ namespace MarchingCubesFlat
             for(int z = 0; z < grid_size.z - 1; z++){
                 for(int y = 0; y < grid_size.y - 1; y++){
                     for(int x = 0; x < grid_size.x - 1; x++){
+
+                        if(should_stop.load(std::memory_order_relaxed))
+                            continue;
                         
                         const glm::vec3 p(x,y,z);
     
@@ -146,6 +149,8 @@ namespace MarchingCubesFlat
                         trinagulate_cell(cell, isovalue, lVerts, lNorms);
                         
                         if(!lVerts.empty()){
+                            if(delay > 0.0)
+                                std::this_thread::sleep_for(std::chrono::duration<double>{delay});
                             std::lock_guard<std::mutex> lock(mut);
                             outVerts.insert(outVerts.end(), lVerts.begin(), lVerts.end());
                             outNormals.insert(outNormals.end(), lNorms.begin(), lNorms.end());

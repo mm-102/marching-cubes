@@ -1,0 +1,182 @@
+#include "cxxopts.hpp"
+#include <vector>
+#include <marching_cubes_flat.hpp>
+#include <marching_cubes_grad.hpp>
+#include <grid.hpp>
+#include <generator.hpp>
+#include <save_obj.hpp>
+#include <glm/glm.hpp>
+#include <iostream>
+#include <chrono>
+#include <mutex>
+#include <atomic>
+#include <thread>
+#include <triangles.hpp>
+#include <window_manager.hpp>
+#include <camera.hpp>
+
+std::vector<glm::vec3> vertBuf, normBuf;
+std::mutex mut;
+std::atomic_bool should_stop{false};
+std::atomic_bool march_finished{false};
+
+void march(Grid<float> &grid, float isovalue, double delay, bool use_grad){
+    if(use_grad)
+	    MarchingCubesGrad::triangulate_grid_mut(grid, isovalue, vertBuf, normBuf, mut, should_stop, delay);
+    else
+        MarchingCubesFlat::triangulate_grid_mut(grid, isovalue, vertBuf, normBuf, mut, should_stop, delay);
+	march_finished = true;
+}
+
+void use_buf(std::shared_ptr<Triangles> &triangles){
+	std::lock_guard<std::mutex> lock(mut);
+	if(!vertBuf.empty()){
+		triangles->add_verticies(vertBuf, normBuf);
+		vertBuf.clear();
+		normBuf.clear();
+	}
+}
+
+int main(int argc, const char *argv[]){
+
+    float isovalue;
+    bool use_grad;
+    bool animate;
+    double delay;
+
+    cxxopts::Options options("Marching Cubes", "With visualisation and animation");
+
+    options.add_options()
+        ("s,smooth", "Use gradient smoothing", cxxopts::value<bool>(use_grad)->default_value("false"))
+        ("d,dimensions", "Dimensions of generated shape", cxxopts::value<std::vector<float>>())
+        ("g,generate", "generate selected shape", cxxopts::value<std::string>())
+        ("i,input", "load grid from file", cxxopts::value<std::string>())
+        ("v,value,isovalue", "set custom isovalue", cxxopts::value<float>(isovalue)->default_value("0.0"))
+        ("a,animate", "Show mesh during triangulation (slow)", cxxopts::value<bool>(animate)->default_value("false"))
+        ("t,time,delay_time", "Delay between iterations when animating", cxxopts::value<double>(delay)->default_value("0.0"))
+    ;
+
+    auto result = options.parse(argc, argv);
+
+    Grid<float> grid(0,0,0);
+
+    if(result.count("generate")){
+        const std::string shape = result["generate"].as<std::string>();
+        auto &dims = result["dimensions"].as<std::vector<float>>();
+
+        if(shape == "torus"){
+            float r_minor, r_major;
+            if(dims.size() == 1){
+                r_minor = dims.at(0);
+                r_major = 3.0f * r_minor;
+            }
+            else if(dims.size() == 2){
+                r_minor = dims.at(0);
+                r_major = dims.at(1);
+            }
+            else {
+                std::cerr << "Generator torus incorrect dimentions!" << std::endl;
+            }
+            unsigned xz = static_cast<unsigned>(std::ceil(2.0f * (r_minor + r_major)) + 4);
+            unsigned y = static_cast<unsigned>(std::ceil(2.0f * r_minor) + 4);
+            Generator gen(xz,y,xz);
+            std::cout << "Generator shape: torus " << r_minor << " " << r_major << std::endl;
+            grid = gen.genTorus(glm::vec3(xz,y,xz) * 0.5f, r_minor, r_major);
+        }
+        else if(shape == "sphere"){
+            float r;
+            if(dims.size() == 1){
+                r = dims.at(0);
+            }
+            else {
+                std::cerr << "Generator sphere incorrect dimentions!" << std::endl;
+                exit(EXIT_FAILURE);
+            }
+            unsigned xyz = static_cast<unsigned>(std::ceil(2.0f * r) + 8);
+            Generator gen(xyz,xyz,xyz);
+            std::cout << "Generator shape: sphere " << r << std::endl;
+            grid = gen.genSphere(glm::vec3(xyz,xyz,xyz) * 0.5f, r);
+        }
+        else {
+            std::cerr << "Generator: incorrect generate shape!" << std::endl;
+            exit(EXIT_FAILURE);
+        }
+    }
+    else if(result.count("input")){
+        const std::string input = result["input"].as<std::string>();
+        grid = Generator::fromFile(input);
+    }
+    else {
+        std::cerr << "no data to process specified!" << std::endl;
+        exit(EXIT_FAILURE);
+    }
+
+    
+    glm::mat4 M = glm::translate(glm::mat4(1.0f), -glm::vec3(grid.getSize()) * 0.5f);
+    
+    std::vector<glm::vec3> vertData, normData;
+    std::cout << "Grid prepared, starting triangulation in mode: " << (use_grad ? "smooth" : "flat") << std::endl;
+    std::cout << "Using isovalue: " << isovalue << std::endl;
+    
+    WindowManager windowManager(1024, 720, "Marching Cubes");
+	if(!windowManager.init()){
+        std::cerr << "Error initializing window, aborting" << std::endl;
+		exit(EXIT_FAILURE);
+	}
+    
+    const glm::vec3 size = glm::vec3(grid.getSize());
+    const float viev_range = std::max(size.x, std::max(size.y,size.z)) * 2.0f;
+    Camera camera(glm::vec3(0.0f), 1.5f * size.z, 0.873f, viev_range, windowManager.get_size_ratio());
+
+    windowManager.attach_resize_callback([&](int w, int h, int ratio){camera.updateWindowRatio(ratio);});
+	windowManager.attach_mouse_pos_callback([&](double xrel, double yrel){camera.handle_mouse_pos_event(xrel,yrel);});
+	windowManager.attach_mouse_button_callback([&](int button, int action, int mods){camera.handle_mouse_button_event(button,action,mods);});
+	windowManager.attach_scroll_callback([&](double xoff, double yoff){camera.handle_scroll_event(xoff,yoff);});
+	windowManager.attach_key_callback([&](int key,int scancode, int action, int mods){camera.handle_key_event(key,action,mods);});
+
+    std::shared_ptr<Triangles> triangles;
+
+    auto start = std::chrono::high_resolution_clock::now();
+    auto on_finished = [&](){
+        auto end = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+        std::cout << "Mesh triangulated in [ms] : " << duration.count() << std::endl;
+    };
+
+    std::thread marching_thread;
+    if(!animate){
+        if(use_grad)
+            MarchingCubesGrad::trinagulate_grid(grid, isovalue, vertData, normData);
+        else
+            MarchingCubesFlat::trinagulate_grid(grid, isovalue, vertData, normData);
+
+        triangles = std::make_shared<Triangles>(vertData.size(),M);
+        windowManager.add_object(triangles);
+        triangles->add_verticies(vertData,normData);
+        on_finished();
+    }
+    else{
+        triangles = std::make_shared<Triangles>(1500000,M);
+        windowManager.add_object(triangles);
+        marching_thread = std::thread(march, std::ref(grid), isovalue, delay, use_grad);
+    }
+
+    float delta = 0.0f;
+    bool finished = false;
+    while(!windowManager.should_close()){
+        delta = windowManager.getDelta();
+        camera.update(delta);
+        windowManager.draw_scene(camera);
+        windowManager.poll_events();
+        if(animate && !finished){
+            finished = march_finished;
+            use_buf(triangles);
+            if(finished)
+                on_finished();
+        }
+    }
+    should_stop = true;
+    if(animate)
+        marching_thread.join();
+    exit(EXIT_SUCCESS);
+}
