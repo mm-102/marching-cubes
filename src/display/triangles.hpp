@@ -9,13 +9,15 @@ protected:
     GLuint VAO = 0;
     GLuint VBO1 = 0, VBO2 = 0;
 
-    unsigned bufferSize = 0;
-    unsigned maxSize;
+    size_t bufferOff;
+    size_t bufferSize;
+    std::vector<glm::vec3> verts;
+    std::vector<glm::vec3> norms;
 
     glm::mat4 M;
 
 public:
-    Triangles(unsigned max_size, glm::mat4 M);
+    Triangles(size_t init_size, glm::mat4 M = glm::mat4(1.0f));
 
     virtual void draw(ShaderProgram &shader);
 

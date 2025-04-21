@@ -156,7 +156,8 @@ int main(int argc, const char *argv[]){
         on_finished();
     }
     else{
-        triangles = std::make_shared<Triangles>(1500000,M);
+        const size_t init_res = static_cast<size_t>(size.x * size.y * size.z / 9);
+        triangles = std::make_shared<Triangles>(init_res,M);
         windowManager.add_object(triangles);
         marching_thread = std::thread(march, std::ref(grid), isovalue, delay, use_grad);
     }
