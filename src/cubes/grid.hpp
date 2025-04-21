@@ -29,4 +29,7 @@ public:
     glm::uvec3 getSize() const{
         return m;
     }
+
+    const float* vector_data() const { return data.data(); }
+    float* vector_data() { return data.data(); }
 };

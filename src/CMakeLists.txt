@@ -6,13 +6,12 @@ target_link_libraries(marching_vis PUBLIC libdisplay)
 target_include_directories(marching_vis PUBLIC display)
 
 add_subdirectory(cubes)
-target_link_libraries(marching PUBLIC libcubesgrad)
-target_link_libraries(marching PUBLIC libcubesflat)
+target_link_libraries(marching PUBLIC libcubes)
 target_link_libraries(marching PUBLIC libcubesgen)
+target_link_libraries(marching PUBLIC libcubescuda) # temp
 target_include_directories(marching PUBLIC cubes)
 
-target_link_libraries(marching_vis PUBLIC libcubesgrad)
-target_link_libraries(marching_vis PUBLIC libcubesflat)
+target_link_libraries(marching_vis PUBLIC libcubes)
 target_link_libraries(marching_vis PUBLIC libcubesgen)
 target_include_directories(marching_vis PUBLIC cubes)
 
