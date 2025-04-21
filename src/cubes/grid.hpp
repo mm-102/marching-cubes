@@ -5,7 +5,7 @@
 template<class T>
 class Grid{
     std::vector<T> data;
-    const glm::uvec3 m;
+    glm::uvec3 m;
 
 public:
     T operator()(unsigned x, unsigned y, unsigned z) const {
