@@ -1,8 +1,8 @@
 #include "marching_cubes_common.hpp"
 #include "cuda_marching_cubes.hpp"
 
-// #include <thrust/device_vector.h>
-// #include <thrust/scan.h>
+#include <thrust/device_vector.h>
+#include <thrust/scan.h>
 #include <thrust/device_ptr.h>
 
 __device__ inline int calcCubeIndex(const FlatGridCell& cell, float isovalue) {
@@ -38,7 +38,7 @@ __device__ inline void intersection_coords(
 
 __device__ inline void triangulate_cell_gpu(
     const FlatGridCell& cell, float isovalue,
-    float3* outVerts, float3* outNormals, unsigned* outCounter
+    float3* outVerts, float3* outNormals, const int *offsets, int tid
 ) {
     int cubeIndex = calcCubeIndex(cell, isovalue);
 
@@ -46,6 +46,7 @@ __device__ inline void triangulate_cell_gpu(
     float3 intersections[12];
     intersection_coords(cell, isovalue, cubeIndex, intersections);
 
+    int base = offsets[tid] * 3;
     for (int i = 0; d_triTable[cubeIndex][i + 2] != -1; i += 3) {
         float3 p1 = intersections[d_triTable[cubeIndex][i]];
         float3 p2 = intersections[d_triTable[cubeIndex][i + 1]];
@@ -56,7 +57,6 @@ __device__ inline void triangulate_cell_gpu(
 
         float3 norm = normalize(cross(u, v));
 
-        unsigned base = atomicAdd(outCounter, 3);
         outVerts[base]     = p1;
         outVerts[base + 1] = p2;
         outVerts[base + 2] = p3;
@@ -64,12 +64,13 @@ __device__ inline void triangulate_cell_gpu(
         outNormals[base]     = norm;
         outNormals[base + 1] = norm;
         outNormals[base + 2] = norm;
+        base += 3;
     }
 }
 
 __global__ void triangulate_flat_kernel(GPU_Grid grid, float isovalue, 
         float3* outVerts, float3* outNormals,
-        unsigned *outCounter){
+        const int *offsets){
     
     int tid = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -98,7 +99,7 @@ __global__ void triangulate_flat_kernel(GPU_Grid grid, float isovalue,
         FlatGridCellEle{make_float3(p.x,     p.y+1.f, p.z+1.f), grid(x,   y+1, z+1)}
     };
 
-    triangulate_cell_gpu(cell, isovalue, outVerts, outNormals, outCounter);
+    triangulate_cell_gpu(cell, isovalue, outVerts, outNormals, offsets, tid);
 }
 
 __global__ void count_triangles_kernel(GPU_Grid grid, float isovalue, int *outCounts){
@@ -128,7 +129,7 @@ __global__ void count_triangles_kernel(GPU_Grid grid, float isovalue, int *outCo
 
     int count = 0;
     for (int i = 0; d_triTable[cubeIndex][i] != -1; i += 3)
-        count++;
+        ++count;
 
     outCounts[tid] = count;
 }
@@ -146,47 +147,50 @@ namespace CudaMarchingCubes
         size_t numEle = size.x * size.y * size.z;
         const int totalCells = (size.x - 1) * (size.y - 1) * (size.z - 1);
         
-        // thrust::device_vector<float> d_data_vec(numEle);
-        // float *d_data = thrust::raw_pointer_cast(d_data_vec.data());
+        int threads = 128;
+        int blocks = (totalCells + threads - 1) / threads;
+
         float *d_data;
         cudaMalloc(&d_data, numEle * sizeof(float));
-
         cudaMemcpy(d_data, grid.vector_data(), numEle * sizeof(float), cudaMemcpyHostToDevice);
 
         GPU_Grid d_grid(d_data, size.x, size.y, size.z);
 
-        const unsigned res = totalCells * 15;
+        thrust::device_vector<int> d_counts(totalCells + 1);
+        thrust::device_vector<int> d_offsets(totalCells + 1);
+
+        count_triangles_kernel<<<blocks, threads>>>(d_grid, isovalue, thrust::raw_pointer_cast(d_counts.data()));
+        cudaDeviceSynchronize();
+        
+        // prefix sum
+        thrust::exclusive_scan(d_counts.begin(), d_counts.end(), d_offsets.begin());
+
+        int triNum;
+        cudaMemcpy(&triNum, thrust::raw_pointer_cast(d_offsets.data()+totalCells), sizeof(int), cudaMemcpyDeviceToHost);
+        const int vertNum = 3 * triNum;
 
         float3 *d_verts;
         float3* d_normals;
-        unsigned* d_counter;
-        cudaMalloc(&d_verts, res * sizeof(float3));
-        cudaMalloc(&d_normals, res * sizeof(float3));
-        cudaMalloc(&d_counter, sizeof(unsigned));
-        cudaMemset(d_counter, 0, sizeof(unsigned));
+        cudaMalloc(&d_verts, vertNum * sizeof(float3));
+        cudaMalloc(&d_normals, vertNum * sizeof(float3));
 
-        int threads = 256;
-        int blocks = (totalCells + threads - 1) / threads;
 
-        triangulate_flat_kernel<<<blocks, threads>>>(d_grid, isovalue, d_verts, d_normals, d_counter);
+        triangulate_flat_kernel<<<blocks, threads>>>(d_grid, isovalue, d_verts, d_normals, thrust::raw_pointer_cast(d_offsets.data()));
         cudaDeviceSynchronize();
         cudaError_t err = cudaGetLastError();
         if (err != cudaSuccess) {
             std::cerr << "CUDA kernel error: " << cudaGetErrorString(err) << std::endl;
         }
 
-        unsigned count;
-        cudaMemcpy(&count, d_counter, sizeof(unsigned), cudaMemcpyDeviceToHost);
-        outVerts.resize(count);
-        outNormals.resize(count);
+        outVerts.resize(vertNum);
+        outNormals.resize(vertNum);
 
-        cudaMemcpy(outVerts.data(), d_verts, count * sizeof(float3), cudaMemcpyDeviceToHost);
-        cudaMemcpy(outNormals.data(), d_normals, count * sizeof(float3), cudaMemcpyDeviceToHost);
+        cudaMemcpy(outVerts.data(), d_verts, vertNum * sizeof(float3), cudaMemcpyDeviceToHost);
+        cudaMemcpy(outNormals.data(), d_normals, vertNum * sizeof(float3), cudaMemcpyDeviceToHost);
 
         cudaFree(d_data);
         cudaFree(d_verts);
         cudaFree(d_normals);
-        cudaFree(d_counter);
     }
 
     void trinagulate_grid(const Grid<float> &grid, float isovalue, 

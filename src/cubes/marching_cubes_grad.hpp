@@ -1,6 +1,7 @@
 #pragma once
 #include <glm/glm.hpp>
 #include <vector>
+#include <array>
 #include <mutex>
 #include <thread>
 #include <atomic>
