@@ -1,6 +1,7 @@
 #pragma once
 #include <glm/glm.hpp>
 #include <vector>
+#include <iostream>
 #include "grid.hpp"
 #include <cuda_runtime.h>
 

@@ -1,6 +1,9 @@
 #include "marching_cubes_common.hpp"
 #include "cuda_marching_cubes.hpp"
-#include <iostream>
+
+// #include <thrust/device_vector.h>
+// #include <thrust/scan.h>
+#include <thrust/device_ptr.h>
 
 __device__ inline int calcCubeIndex(const FlatGridCell& cell, float isovalue) {
     int index = 0;
@@ -98,6 +101,37 @@ __global__ void triangulate_flat_kernel(GPU_Grid grid, float isovalue,
     triangulate_cell_gpu(cell, isovalue, outVerts, outNormals, outCounter);
 }
 
+__global__ void count_triangles_kernel(GPU_Grid grid, float isovalue, int *outCounts){
+    int tid = blockIdx.x * blockDim.x + threadIdx.x;
+
+    unsigned gx = grid.x - 1;
+    unsigned gy = grid.y - 1;
+    unsigned gz = grid.z - 1;
+    unsigned total = gx * gy * gz;
+
+    if (tid >= total) return;
+
+    // 3D index from flat ID
+    int z = tid / (gy * gx);
+    int y = (tid / gx) % gy;
+    int x = tid % gx;
+
+    int cubeIndex = 0;
+    if (grid(x,   y,   z  ) < isovalue) cubeIndex |= 1;
+    if (grid(x+1, y,   z  ) < isovalue) cubeIndex |= 2;
+    if (grid(x+1, y,   z+1) < isovalue) cubeIndex |= 4;
+    if (grid(x,   y,   z+1) < isovalue) cubeIndex |= 8;
+    if (grid(x,   y+1, z  ) < isovalue) cubeIndex |= 16;
+    if (grid(x+1, y+1, z  ) < isovalue) cubeIndex |= 32;
+    if (grid(x+1, y+1, z+1) < isovalue) cubeIndex |= 64;
+    if (grid(x,   y+1, z+1) < isovalue) cubeIndex |= 128;
+
+    int count = 0;
+    for (int i = 0; d_triTable[cubeIndex][i] != -1; i += 3)
+        count++;
+
+    outCounts[tid] = count;
+}
 
 namespace CudaMarchingCubes
 {
@@ -108,17 +142,19 @@ namespace CudaMarchingCubes
         cudaMemcpyToSymbol(d_edgeTable, edgeTable, sizeof(edgeTable));
         cudaMemcpyToSymbol(d_triTable, triTable, sizeof(triTable));
             
-        float *d_data;
         const glm::vec3 size = grid.getSize();
         size_t numEle = size.x * size.y * size.z;
-
+        const int totalCells = (size.x - 1) * (size.y - 1) * (size.z - 1);
+        
+        // thrust::device_vector<float> d_data_vec(numEle);
+        // float *d_data = thrust::raw_pointer_cast(d_data_vec.data());
+        float *d_data;
         cudaMalloc(&d_data, numEle * sizeof(float));
 
         cudaMemcpy(d_data, grid.vector_data(), numEle * sizeof(float), cudaMemcpyHostToDevice);
 
         GPU_Grid d_grid(d_data, size.x, size.y, size.z);
 
-        const int totalCells = (size.x - 1) * (size.y - 1) * (size.z - 1);
         const unsigned res = totalCells * 15;
 
         float3 *d_verts;
