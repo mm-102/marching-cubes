@@ -24,11 +24,13 @@ __device__ inline float3 normalize(float3 v) {
 
 struct GPU_Grid {
     float* data;
-    unsigned x, y, z;
+    const unsigned x, y, z;
+    const unsigned s;
+    const unsigned ne;
 
     __host__ __device__
     GPU_Grid(float* data, unsigned x, unsigned y, unsigned z)
-        : data(data), x(x), y(y), z(z) {}
+        : data(data), x(x), y(y), z(z), s(x*y*z), ne((x-1)*(y-1)*(z-1)) {}
 
     __host__ __device__
     float operator()(unsigned i, unsigned j, unsigned k) const {
@@ -46,8 +48,18 @@ struct GPU_Grid {
     }
 
     __host__ __device__
+    unsigned index_g(unsigned i, unsigned j, unsigned k) const {
+        return k * (y - 1) * (x - 1) + j * (x - 1) + i;
+    }
+
+    __host__ __device__
     unsigned size() const {
-        return x * y * z;
+        return s;
+    }
+
+    __host__ __device__
+    unsigned numEle() const {
+        return ne;
     }
 };
 

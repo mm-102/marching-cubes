@@ -72,19 +72,12 @@ __global__ void triangulate_flat_kernel(GPU_Grid grid, float isovalue,
         float3* outVerts, float3* outNormals,
         const int *offsets){
     
-    int tid = blockIdx.x * blockDim.x + threadIdx.x;
-
-    unsigned gx = grid.x - 1;
-    unsigned gy = grid.y - 1;
-    unsigned gz = grid.z - 1;
-    unsigned total = gx * gy * gz;
-
-    if (tid >= total) return;
-
-    // 3D index from flat ID
-    int z = tid / (gy * gx);
-    int y = (tid / gx) % gy;
-    int x = tid % gx;
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
+    int z = blockIdx.z * blockDim.z + threadIdx.z;
+    
+    if(x >= grid.x - 1 || y >= grid.y - 1 || z >= grid.z - 1)
+        return;
 
     float3 p = make_float3(x, y, z);
 
@@ -99,24 +92,19 @@ __global__ void triangulate_flat_kernel(GPU_Grid grid, float isovalue,
         FlatGridCellEle{make_float3(p.x,     p.y+1.f, p.z+1.f), grid(x,   y+1, z+1)}
     };
 
-    triangulate_cell_gpu(cell, isovalue, outVerts, outNormals, offsets, tid);
+    triangulate_cell_gpu(cell, isovalue, outVerts, outNormals, offsets, grid.index_g(p.x,p.y,p.z));
 }
 
 __global__ void count_triangles_kernel(GPU_Grid grid, float isovalue, int *outCounts){
-    int tid = blockIdx.x * blockDim.x + threadIdx.x;
 
-    unsigned gx = grid.x - 1;
-    unsigned gy = grid.y - 1;
-    unsigned gz = grid.z - 1;
-    unsigned total = gx * gy * gz;
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
+    int z = blockIdx.z * blockDim.z + threadIdx.z;
 
-    if (tid >= total) return;
-
-    // 3D index from flat ID
-    int z = tid / (gy * gx);
-    int y = (tid / gx) % gy;
-    int x = tid % gx;
-
+    
+    if(x >= grid.x - 1 || y >= grid.y - 1 || z >= grid.z - 1)
+        return;
+    
     int cubeIndex = 0;
     if (grid(x,   y,   z  ) < isovalue) cubeIndex |= 1;
     if (grid(x+1, y,   z  ) < isovalue) cubeIndex |= 2;
@@ -131,7 +119,7 @@ __global__ void count_triangles_kernel(GPU_Grid grid, float isovalue, int *outCo
     for (int i = 0; d_triTable[cubeIndex][i] != -1; i += 3)
         ++count;
 
-    outCounts[tid] = count;
+    outCounts[grid.index_g(x,y,z)] = count;
 }
 
 namespace CudaMarchingCubes
@@ -146,9 +134,17 @@ namespace CudaMarchingCubes
         const glm::vec3 size = grid.getSize();
         size_t numEle = size.x * size.y * size.z;
         const int totalCells = (size.x - 1) * (size.y - 1) * (size.z - 1);
-        
-        int threads = 1024;
-        int blocks = (totalCells + threads - 1) / threads;
+
+        dim3 threads(16,16,4);
+        dim3 blocks(
+            ceil((double)(size.x - 1) / threads.x),
+            ceil((double)(size.y - 1) / threads.y),
+            ceil((double)(size.z - 1) / threads.z)
+        );
+
+        std::cout << blocks.x << " " << blocks.y << " " << blocks.z << std::endl;
+        std::cout << blocks.x * threads.x << " " << blocks.y * threads.y << " " << blocks.z * threads.z << std::endl;
+        std::cout << size.x - 1 << " " << size.y - 1 << " " << size.z - 1 << std::endl;
 
         float *d_data;
         cudaMalloc(&d_data, numEle * sizeof(float));
@@ -161,9 +157,20 @@ namespace CudaMarchingCubes
 
         count_triangles_kernel<<<blocks, threads>>>(d_grid, isovalue, thrust::raw_pointer_cast(d_counts.data()));
         cudaDeviceSynchronize();
+        cudaError_t err = cudaGetLastError();
+        if (err != cudaSuccess) {
+            std::cerr << "[count_triangles] CUDA kernel error: " << cudaGetErrorString(err) << std::endl;
+            return;
+        }
         
         // prefix sum
         thrust::exclusive_scan(d_counts.begin(), d_counts.end(), d_offsets.begin());
+        
+        err = cudaGetLastError();
+        if (err != cudaSuccess) {
+            std::cerr << "[exclusive_scan] CUDA kernel error: " << cudaGetErrorString(err) << std::endl;
+            return;
+        }
 
         int triNum;
         cudaMemcpy(&triNum, thrust::raw_pointer_cast(d_offsets.data()+totalCells), sizeof(int), cudaMemcpyDeviceToHost);
@@ -177,9 +184,11 @@ namespace CudaMarchingCubes
 
         triangulate_flat_kernel<<<blocks, threads>>>(d_grid, isovalue, d_verts, d_normals, thrust::raw_pointer_cast(d_offsets.data()));
         cudaDeviceSynchronize();
-        cudaError_t err = cudaGetLastError();
+
+        err = cudaGetLastError();
         if (err != cudaSuccess) {
-            std::cerr << "CUDA kernel error: " << cudaGetErrorString(err) << std::endl;
+            std::cerr << "[triangulate] CUDA kernel error: " << cudaGetErrorString(err) << std::endl;
+            return;
         }
 
         outVerts.resize(vertNum);
@@ -191,7 +200,7 @@ namespace CudaMarchingCubes
         cudaFree(d_data);
         cudaFree(d_verts);
         cudaFree(d_normals);
-        cudaDeviceReset();
+        // cudaDeviceReset();
     }
 
     void trinagulate_grid(const Grid<float> &grid, float isovalue, 
