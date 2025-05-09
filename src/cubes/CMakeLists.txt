@@ -17,5 +17,5 @@ if(OpenMP_CXX_FOUND)
 endif()
 
 add_library(libcubescuda cuda_marching_cubes.cu)
-set_property(TARGET libcubescuda PROPERTY CUDA_ARCHITECTURES 86)
+set_property(TARGET libcubescuda PROPERTY CUDA_ARCHITECTURES native)
 target_include_directories(libcubescuda PUBLIC ${GLM_INCLUDE_DIRS})

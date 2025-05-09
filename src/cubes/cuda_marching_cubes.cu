@@ -147,7 +147,7 @@ namespace CudaMarchingCubes
         size_t numEle = size.x * size.y * size.z;
         const int totalCells = (size.x - 1) * (size.y - 1) * (size.z - 1);
         
-        int threads = 128;
+        int threads = 1024;
         int blocks = (totalCells + threads - 1) / threads;
 
         float *d_data;
@@ -191,6 +191,7 @@ namespace CudaMarchingCubes
         cudaFree(d_data);
         cudaFree(d_verts);
         cudaFree(d_normals);
+        cudaDeviceReset();
     }
 
     void trinagulate_grid(const Grid<float> &grid, float isovalue, 
