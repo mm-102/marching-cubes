@@ -2,7 +2,7 @@
 #include <vector>
 #include <marching_cubes_flat.hpp>
 #include <marching_cubes_grad.hpp>
-#include <cuda_marching_cubes.hpp>
+#include <CudaMC.hpp>
 #include <grid.hpp>
 #include <generator.hpp>
 #include <save_obj.hpp>
@@ -91,9 +91,9 @@ int main(int argc, const char *argv[]){
     if(use_grad)
         MarchingCubesGrad::trinagulate_grid(grid, isovalue, vertData, normData);
     else
-        CudaMarchingCubes::trinagulate_grid_flat(grid, isovalue, vertData, normData);
+        // CudaMarchingCubes::trinagulate_grid_flat(grid, isovalue, vertData, normData);
         // MarchingCubesFlat::trinagulate_grid(grid, isovalue, vertData, normData);
-
+        CudaMC::trinagulate_grid<CudaMC::Grad>(grid, isovalue, vertData, normData);
     
 
     auto end = std::chrono::high_resolution_clock::now();

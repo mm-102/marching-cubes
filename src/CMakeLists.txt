@@ -1,4 +1,4 @@
-target_sources(marching PRIVATE marching.cpp)
+target_sources(marching PRIVATE marching.cu)
 target_sources(marching_vis PRIVATE marching_vis.cpp)
 
 add_subdirectory(display)
@@ -8,7 +8,7 @@ target_include_directories(marching_vis PUBLIC display)
 add_subdirectory(cubes)
 target_link_libraries(marching PUBLIC libcubes)
 target_link_libraries(marching PUBLIC libcubesgen)
-target_link_libraries(marching PUBLIC libcubescuda) # temp
+# target_link_libraries(marching PUBLIC libcubescuda) # temp
 target_include_directories(marching PUBLIC cubes)
 
 target_link_libraries(marching_vis PUBLIC libcubes)
