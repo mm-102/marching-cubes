@@ -1,7 +1,5 @@
 #include "cxxopts.hpp"
 #include <vector>
-#include <marching_cubes_flat.hpp>
-#include <marching_cubes_grad.hpp>
 #include <CudaMC.hpp>
 #include <grid.hpp>
 #include <generator.hpp>
@@ -9,6 +7,7 @@
 #include <glm/glm.hpp>
 #include <iostream>
 #include <chrono>
+#include <CpuMC.hpp>
 
 int main(int argc, const char *argv[]){
 
@@ -90,7 +89,8 @@ int main(int argc, const char *argv[]){
     auto start = std::chrono::high_resolution_clock::now();
 
     if(use_grad)
-        MarchingCubesGrad::trinagulate_grid(grid, isovalue, vertData, normData);
+        // MarchingCubesGrad::trinagulate_grid(grid, isovalue, vertData, normData);
+        CpuMP::trinagulate_grid<CpuMP::PG,true>(grid,isovalue,vertData,normData);
     else
         CudaMC::trinagulate_grid<CudaMC::P>(grid, isovalue, vertData, normData);
         // CudaMarchingCubes::trinagulate_grid_flat(grid, isovalue, vertData, normData);

@@ -1,6 +1,8 @@
-#include "marching_cubes_common.hpp"
+#pragma once
+#include "common.hpp"
 #include "_CudaMC.hpp"
 #include "grid.hpp"
+#include <glm/glm.hpp>
 
 #include <thrust/device_vector.h>
 #include <thrust/scan.h>
@@ -172,9 +174,9 @@ namespace CudaMC
             ceil((double)(size.z - 1) / threads.z)
         );
 
-        std::cout << blocks.x << " " << blocks.y << " " << blocks.z << std::endl;
-        std::cout << blocks.x * threads.x << " " << blocks.y * threads.y << " " << blocks.z * threads.z << std::endl;
-        std::cout << size.x - 1 << " " << size.y - 1 << " " << size.z - 1 << std::endl;
+        // std::cout << blocks.x << " " << blocks.y << " " << blocks.z << std::endl;
+        // std::cout << blocks.x * threads.x << " " << blocks.y * threads.y << " " << blocks.z * threads.z << std::endl;
+        // std::cout << size.x - 1 << " " << size.y - 1 << " " << size.z - 1 << std::endl;
 
         float *d_data;
         cudaMalloc(&d_data, numEle * sizeof(float));
@@ -210,7 +212,6 @@ namespace CudaMC
         float3* d_normals;
         cudaMalloc(&d_verts, vertNum * sizeof(float3));
         cudaMalloc(&d_normals, vertNum * sizeof(float3));
-
 
         triangulate_kernel<T><<<blocks, threads>>>(d_grid, isovalue, d_verts, d_normals, thrust::raw_pointer_cast(d_offsets.data()));
         cudaDeviceSynchronize();

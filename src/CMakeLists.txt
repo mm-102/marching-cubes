@@ -6,14 +6,22 @@ target_link_libraries(marching_vis PUBLIC libdisplay)
 target_include_directories(marching_vis PUBLIC display)
 
 add_subdirectory(cubes)
-target_link_libraries(marching PUBLIC libcubes)
 target_link_libraries(marching PUBLIC libcubesgen)
-# target_link_libraries(marching PUBLIC libcubescuda) # temp
 target_include_directories(marching PUBLIC cubes)
 
-target_link_libraries(marching_vis PUBLIC libcubes)
 target_link_libraries(marching_vis PUBLIC libcubesgen)
 target_include_directories(marching_vis PUBLIC cubes)
 
 find_package(glm REQUIRED)
+target_include_directories(marching PUBLIC ${GLM_INCLUDE_DIRS})
 target_include_directories(marching_vis PUBLIC ${GLM_INCLUDE_DIRS})
+
+if(OpenMP_CXX_FOUND)
+    set(MARCH_COM_OPT -march=native -ffast-math -funroll-loops)  
+    
+    target_link_libraries(marching PUBLIC OpenMP::OpenMP_CXX)
+    target_compile_options(marching PUBLIC ${MARCH_COM_OPT})
+    
+    target_link_libraries(marching_vis PUBLIC OpenMP::OpenMP_CXX)
+    target_compile_options(marching_vis PUBLIC ${MARCH_COM_OPT})
+endif()
