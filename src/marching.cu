@@ -86,14 +86,15 @@ int main(int argc, const char *argv[]){
     std::vector<glm::vec3> vertData, normData;
     std::cout << "Grid prepared, starting triangulation in mode: " << (use_grad ? "smooth" : "flat") << std::endl;
     std::cout << "Using isovalue: " << isovalue << std::endl;
+    CudaMC::setConstMem();
     auto start = std::chrono::high_resolution_clock::now();
 
     if(use_grad)
         MarchingCubesGrad::trinagulate_grid(grid, isovalue, vertData, normData);
     else
+        CudaMC::trinagulate_grid<CudaMC::Grad>(grid, isovalue, vertData, normData);
         // CudaMarchingCubes::trinagulate_grid_flat(grid, isovalue, vertData, normData);
         // MarchingCubesFlat::trinagulate_grid(grid, isovalue, vertData, normData);
-        CudaMC::trinagulate_grid<CudaMC::Grad>(grid, isovalue, vertData, normData);
     
 
     auto end = std::chrono::high_resolution_clock::now();

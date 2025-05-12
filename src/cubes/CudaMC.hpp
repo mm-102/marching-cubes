@@ -267,12 +267,6 @@ namespace CudaMC
     template<typename Traits>
     void trinagulate_grid(const Grid<float> &grid, float isovalue, 
             std::vector<glm::vec3>& outVerts, std::vector<glm::vec3>& outNormals){
-        
-        cudaMemcpyToSymbol(d_edgeToVertices, edgeToVerticesU, sizeof(edgeToVerticesU));
-        cudaMemcpyToSymbol(d_edgeTable, edgeTable, sizeof(edgeTable));
-        cudaMemcpyToSymbol(d_triTable, triTable, sizeof(triTable));
-        
-        cudaMemcpyToSymbol(d_order, order, sizeof(order));
             
         const glm::vec3 size = grid.getSize();
         size_t numEle = size.x * size.y * size.z;
@@ -343,5 +337,13 @@ namespace CudaMC
         cudaFree(d_data);
         cudaFree(d_verts);
         cudaFree(d_normals);
+    }
+
+    void setConstMem(){
+        cudaMemcpyToSymbol(d_edgeToVertices, edgeToVerticesU, sizeof(edgeToVerticesU));
+        cudaMemcpyToSymbol(d_edgeTable, edgeTable, sizeof(edgeTable));
+        cudaMemcpyToSymbol(d_triTable, triTable, sizeof(triTable));
+        
+        cudaMemcpyToSymbol(d_order, order, sizeof(order));
     }
 }
