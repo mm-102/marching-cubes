@@ -8,6 +8,8 @@
 #include <omp.h>
 #include <mutex>
 #include <atomic>
+#include <chrono>
+#include <thread>
 
 namespace CpuMP{
 

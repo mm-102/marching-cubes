@@ -26,6 +26,7 @@ int main(int argc, const char *argv[]){
         ("n,no_save", "don't save results", cxxopts::value<bool>(no_save)->default_value("false"))
         ("i,input", "load grid from file", cxxopts::value<std::string>())
         ("v,value,isovalue", "set custom isovalue", cxxopts::value<float>(isovalue)->default_value("0.0"))
+        ("m,mode", "use seq, omp or cuda", cxxopts::value<std::string>()->default_value("omp"))
     ;
 
     auto result = options.parse(argc, argv);
@@ -82,19 +83,38 @@ int main(int argc, const char *argv[]){
         exit(EXIT_FAILURE);
     }
 
+    const std::string mode = result["mode"].as<std::string>();
+
     std::vector<glm::vec3> vertData, normData;
-    std::cout << "Grid prepared, starting triangulation in mode: " << (use_grad ? "smooth" : "flat") << std::endl;
     std::cout << "Using isovalue: " << isovalue << std::endl;
+    std::cout << "Grid prepared, starting triangulation in mode: " << (use_grad ? "smooth" : "flat") << std::endl;
+    std::cout << "Implementation: " << mode << std::endl;
+
     CudaMC::setConstMem();
     auto start = std::chrono::high_resolution_clock::now();
 
-    if(use_grad)
-        // MarchingCubesGrad::trinagulate_grid(grid, isovalue, vertData, normData);
-        CpuMP::trinagulate_grid<CpuMP::PG,true>(grid,isovalue,vertData,normData);
-    else
-        CudaMC::trinagulate_grid<CudaMC::P>(grid, isovalue, vertData, normData);
-        // CudaMarchingCubes::trinagulate_grid_flat(grid, isovalue, vertData, normData);
-        // MarchingCubesFlat::trinagulate_grid(grid, isovalue, vertData, normData);
+    if(use_grad){
+        if(mode == "omp")
+            CpuMP::trinagulate_grid<CpuMP::PG,true>(grid,isovalue,vertData,normData);
+        else if(mode == "seq")
+            CpuMP::trinagulate_grid<CpuMP::PG,false>(grid,isovalue,vertData,normData);
+        else if(mode == "cuda")
+            CudaMC::trinagulate_grid<CudaMC::PG>(grid,isovalue,vertData,normData);
+        else{
+            std::cerr << "Incorrect mode, use seq, omp or cuda" << std::endl;
+        }
+    }
+    else{
+        if(mode == "omp")
+            CpuMP::trinagulate_grid<CpuMP::P,true>(grid,isovalue,vertData,normData);
+        else if(mode == "seq")
+            CpuMP::trinagulate_grid<CpuMP::P,false>(grid,isovalue,vertData,normData);
+        else if(mode == "cuda")
+            CudaMC::trinagulate_grid<CudaMC::P>(grid,isovalue,vertData,normData);
+        else{
+            std::cerr << "Incorrect mode, use seq,omp or cuda" << std::endl;
+        }
+    }
 
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
