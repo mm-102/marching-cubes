@@ -92,10 +92,9 @@ int main(int argc, const char *argv[]){
     if(use_grad)
         MarchingCubesGrad::trinagulate_grid(grid, isovalue, vertData, normData);
     else
-        CudaMC::trinagulate_grid<CudaMC::Grad>(grid, isovalue, vertData, normData);
+        CudaMC::trinagulate_grid<CudaMC::P>(grid, isovalue, vertData, normData);
         // CudaMarchingCubes::trinagulate_grid_flat(grid, isovalue, vertData, normData);
         // MarchingCubesFlat::trinagulate_grid(grid, isovalue, vertData, normData);
-    
 
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
