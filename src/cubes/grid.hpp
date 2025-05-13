@@ -30,6 +30,6 @@ public:
         return m;
     }
 
-    const float* vector_data() const { return data.data(); }
-    float* vector_data() { return data.data(); }
+    const T* vector_data() const { return data.data(); }
+    T* vector_data() { return data.data(); }
 };
