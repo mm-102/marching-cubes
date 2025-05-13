@@ -19,7 +19,9 @@ Grid<float> Generator::fromFile(const std::string fileName){
     file >> sx >> sy >> sz;
 
     std::istream_iterator<float> start(file), end;
-    return Grid<float>(sx, sy, sz, std::vector<float>(start,end));
+    Grid<float> grid(sx,sy,sz);
+    std::copy(start, end, grid.raw_data());
+    return grid;
 }
 
 Grid<float> Generator::genSphere(glm::vec3 center, float radius){

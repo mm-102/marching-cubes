@@ -172,7 +172,7 @@ namespace CudaMC
 
         float *d_data;
         cudaMalloc(&d_data, numEle * sizeof(float));
-        cudaMemcpy(d_data, grid.vector_data(), numEle * sizeof(float), cudaMemcpyHostToDevice);
+        cudaMemcpy(d_data, grid.raw_data(), numEle * sizeof(float), cudaMemcpyHostToDevice);
 
         GPU_Grid d_grid(d_data, size.x, size.y, size.z);
 
@@ -237,6 +237,6 @@ namespace CudaMC
 
 template void CudaMC::trinagulate_grid<CudaMC::P>(const Grid<float> &grid, float isovalue, 
     std::vector<glm::vec3>& outVerts, std::vector<glm::vec3>& outNormals);
-    
+
 template void CudaMC::trinagulate_grid<CudaMC::PG>(const Grid<float> &grid, float isovalue, 
     std::vector<glm::vec3>& outVerts, std::vector<glm::vec3>& outNormals);
