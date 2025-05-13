@@ -1,13 +1,13 @@
 #include "cxxopts.hpp"
 #include <vector>
-#include <marching_cubes_flat.hpp>
-#include <marching_cubes_grad.hpp>
+#include <CudaMC.hpp>
 #include <grid.hpp>
 #include <generator.hpp>
 #include <save_obj.hpp>
 #include <glm/glm.hpp>
 #include <iostream>
 #include <chrono>
+#include <CpuMC.hpp>
 
 int main(int argc, const char *argv[]){
 
@@ -26,6 +26,7 @@ int main(int argc, const char *argv[]){
         ("n,no_save", "don't save results", cxxopts::value<bool>(no_save)->default_value("false"))
         ("i,input", "load grid from file", cxxopts::value<std::string>())
         ("v,value,isovalue", "set custom isovalue", cxxopts::value<float>(isovalue)->default_value("0.0"))
+        ("m,mode", "use seq, omp or cuda", cxxopts::value<std::string>()->default_value("cuda"))
     ;
 
     auto result = options.parse(argc, argv);
@@ -82,19 +83,43 @@ int main(int argc, const char *argv[]){
         exit(EXIT_FAILURE);
     }
 
+    const std::string mode = result["mode"].as<std::string>();
+
     std::vector<glm::vec3> vertData, normData;
-    std::cout << "Grid prepared, starting triangulation in mode: " << (use_grad ? "smooth" : "flat") << std::endl;
     std::cout << "Using isovalue: " << isovalue << std::endl;
+    std::cout << "Grid prepared, starting triangulation in mode: " << (use_grad ? "smooth" : "flat") << std::endl;
+    std::cout << "Implementation: " << mode << std::endl;
+
+    CudaMC::setConstMem();
     auto start = std::chrono::high_resolution_clock::now();
 
-    if(use_grad)
-        MarchingCubesGrad::trinagulate_grid(grid, isovalue, vertData, normData);
-    else
-        MarchingCubesFlat::trinagulate_grid(grid, isovalue, vertData, normData);
+    if(use_grad){
+        if(mode == "omp")
+            CpuMC::trinagulate_grid<CpuMC::PG,true>(grid,isovalue,vertData,normData);
+        else if(mode == "seq")
+            CpuMC::trinagulate_grid<CpuMC::PG,false>(grid,isovalue,vertData,normData);
+        else if(mode == "cuda")
+            CudaMC::trinagulate_grid<CudaMC::PG>(grid,isovalue,vertData,normData);
+        else{
+            std::cerr << "Incorrect mode, use seq, omp or cuda" << std::endl;
+        }
+    }
+    else{
+        if(mode == "omp")
+            CpuMC::trinagulate_grid<CpuMC::P,true>(grid,isovalue,vertData,normData);
+        else if(mode == "seq")
+            CpuMC::trinagulate_grid<CpuMC::P,false>(grid,isovalue,vertData,normData);
+        else if(mode == "cuda")
+            CudaMC::trinagulate_grid<CudaMC::P>(grid,isovalue,vertData,normData);
+        else{
+            std::cerr << "Incorrect mode, use seq,omp or cuda" << std::endl;
+        }
+    }
 
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     std::cout << "Mesh triangulated in [ms] : " << duration.count() << std::endl;
+    std::cout << vertData.size() << std::endl;
 
     if(!no_save)
         saveOBJ(out_file, vertData, normData);

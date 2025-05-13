@@ -1,5 +1,6 @@
 #pragma once
 #include <glm/glm.hpp>
+#include <cstdint>
 
 /*
     Tables and conventions from
@@ -7,14 +8,22 @@
 */
 
 
-constexpr glm::uvec2 edgeToVertices[12] = 
+const glm::uvec2 edgeToVertices[12] = 
 {
     {0, 1}, {1, 2}, {2, 3}, {3, 0},
     {4, 5}, {5, 6}, {6, 7}, {7, 4},
     {0, 4}, {1, 5}, {2, 6}, {3, 7}
 };
 
-constexpr int edgeTable[256] =
+const uint8_t edgeToVerticesU[12][2] = 
+{
+    {0, 1}, {1, 2}, {2, 3}, {3, 0},
+    {4, 5}, {5, 6}, {6, 7}, {7, 4},
+    {0, 4}, {1, 5}, {2, 6}, {3, 7}
+};
+
+// 12 bits used
+const uint16_t edgeTable[256] =
 {
     0x0  , 0x109, 0x203, 0x30a, 0x406, 0x50f, 0x605, 0x70c,
     0x80c, 0x905, 0xa0f, 0xb06, 0xc0a, 0xd03, 0xe09, 0xf00,
@@ -50,7 +59,7 @@ constexpr int edgeTable[256] =
     0x70c, 0x605, 0x50f, 0x406, 0x30a, 0x203, 0x109, 0x0   
 };
 
-constexpr int triTable[256][16] =
+const int8_t triTable[256][16] =
 {
     {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
     {0, 8, 3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
