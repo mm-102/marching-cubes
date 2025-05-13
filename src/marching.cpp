@@ -26,7 +26,7 @@ int main(int argc, const char *argv[]){
         ("n,no_save", "don't save results", cxxopts::value<bool>(no_save)->default_value("false"))
         ("i,input", "load grid from file", cxxopts::value<std::string>())
         ("v,value,isovalue", "set custom isovalue", cxxopts::value<float>(isovalue)->default_value("0.0"))
-        ("m,mode", "use seq, omp or cuda", cxxopts::value<std::string>()->default_value("omp"))
+        ("m,mode", "use seq, omp or cuda", cxxopts::value<std::string>()->default_value("cuda"))
     ;
 
     auto result = options.parse(argc, argv);
@@ -95,9 +95,9 @@ int main(int argc, const char *argv[]){
 
     if(use_grad){
         if(mode == "omp")
-            CpuMP::trinagulate_grid<CpuMP::PG,true>(grid,isovalue,vertData,normData);
+            CpuMC::trinagulate_grid<CpuMC::PG,true>(grid,isovalue,vertData,normData);
         else if(mode == "seq")
-            CpuMP::trinagulate_grid<CpuMP::PG,false>(grid,isovalue,vertData,normData);
+            CpuMC::trinagulate_grid<CpuMC::PG,false>(grid,isovalue,vertData,normData);
         else if(mode == "cuda")
             CudaMC::trinagulate_grid<CudaMC::PG>(grid,isovalue,vertData,normData);
         else{
@@ -106,9 +106,9 @@ int main(int argc, const char *argv[]){
     }
     else{
         if(mode == "omp")
-            CpuMP::trinagulate_grid<CpuMP::P,true>(grid,isovalue,vertData,normData);
+            CpuMC::trinagulate_grid<CpuMC::P,true>(grid,isovalue,vertData,normData);
         else if(mode == "seq")
-            CpuMP::trinagulate_grid<CpuMP::P,false>(grid,isovalue,vertData,normData);
+            CpuMC::trinagulate_grid<CpuMC::P,false>(grid,isovalue,vertData,normData);
         else if(mode == "cuda")
             CudaMC::trinagulate_grid<CudaMC::P>(grid,isovalue,vertData,normData);
         else{

@@ -21,9 +21,9 @@ std::atomic_bool march_finished{false};
 
 void march(Grid<float> &grid, float isovalue, double delay, bool use_grad){
     if(use_grad)
-        CpuMP::trinagulate_grid_mut<CpuMP::PG,true>(grid,isovalue,vertBuf,normBuf, mut, should_stop, delay);
+        CpuMC::trinagulate_grid_mut<CpuMC::PG,true>(grid,isovalue,vertBuf,normBuf, mut, should_stop, delay);
     else
-        CpuMP::trinagulate_grid_mut<CpuMP::P,true>(grid,isovalue,vertBuf,normBuf, mut, should_stop, delay);
+        CpuMC::trinagulate_grid_mut<CpuMC::P,true>(grid,isovalue,vertBuf,normBuf, mut, should_stop, delay);
 	march_finished = true;
 }
 
@@ -149,9 +149,9 @@ int main(int argc, const char *argv[]){
         // else
         //     MarchingCubesFlat::trinagulate_grid(grid, isovalue, vertData, normData);
         if(use_grad)
-            CpuMP::trinagulate_grid<CpuMP::PG,true>(grid,isovalue,vertData,normData);
+            CpuMC::trinagulate_grid<CpuMC::PG,true>(grid,isovalue,vertData,normData);
         else
-            CpuMP::trinagulate_grid<CpuMP::P,true>(grid,isovalue,vertData,normData);
+            CpuMC::trinagulate_grid<CpuMC::P,true>(grid,isovalue,vertData,normData);
 
         triangles = std::make_shared<Triangles>(vertData.size(),M);
         windowManager.add_object(triangles);
