@@ -3,15 +3,10 @@
 #include <glm/glm.hpp>
 #include <string>
 
-class Generator{
-    glm::uvec3 grid_size;
+namespace gen{
 
-public: 
-    Generator(glm::uvec3 grid_size);
-    Generator(unsigned sx, unsigned sy, unsigned sz);
-
-    static Grid<float> fromFile(const std::string fileName);
-    Grid<float> genSphere(glm::vec3 center, float radius);
-    Grid<float> genTorus(glm::vec3 center, float r_minor, float r_major);
-    Grid<float> genGyroid(float scale, float threshold = 0.0f);
-};
+    Grid<float> fromFile(const std::string fileName);
+    Grid<float> sphere(float radius);
+    Grid<float> torus(float r_minor, float r_major);
+    Grid<float> gyroid(glm::uvec3 size, float scale, float thresh = 0.0f);
+}

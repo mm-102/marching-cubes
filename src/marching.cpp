@@ -31,7 +31,7 @@ int main(int argc, const char *argv[]){
 
     auto result = options.parse(argc, argv);
 
-    Grid<float> grid(0,0,0);
+    Grid<float> grid;
 
     if(result.count("generate")){
         const std::string shape = result["generate"].as<std::string>();
@@ -49,12 +49,10 @@ int main(int argc, const char *argv[]){
             }
             else {
                 std::cerr << "Generator torus incorrect dimentions!" << std::endl;
+                exit(EXIT_FAILURE);
             }
-            unsigned xz = static_cast<unsigned>(std::ceil(2.0f * (r_minor + r_major)) + 4);
-            unsigned y = static_cast<unsigned>(std::ceil(2.0f * r_minor) + 4);
-            Generator gen(xz,y,xz);
             std::cout << "Generator shape: torus " << r_minor << " " << r_major << std::endl;
-            grid = gen.genTorus(glm::vec3(xz,y,xz) * 0.5f, r_minor, r_major);
+            grid = gen::torus(r_minor, r_major);
         }
         else if(shape == "sphere"){
             float r;
@@ -63,11 +61,11 @@ int main(int argc, const char *argv[]){
             }
             else {
                 std::cerr << "Generator sphere incorrect dimentions!" << std::endl;
+                exit(EXIT_FAILURE);
             }
-            unsigned xyz = static_cast<unsigned>(std::ceil(2.0f * r) + 4);
-            Generator gen(xyz,xyz,xyz);
+
             std::cout << "Generator shape: sphere " << r << std::endl;
-            grid = gen.genSphere(glm::vec3(xyz,xyz,xyz) * 0.5f, r);
+            grid = gen::sphere(r);
         }
         else {
             std::cerr << "Generator: incorrect generate shape!" << std::endl;
@@ -76,7 +74,7 @@ int main(int argc, const char *argv[]){
     }
     else if(result.count("input")){
         const std::string input = result["input"].as<std::string>();
-        grid = Generator::fromFile(input);
+        grid = gen::fromFile(input);
     }
     else {
         std::cerr << "no data to process specified!" << std::endl;

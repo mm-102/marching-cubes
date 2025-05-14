@@ -6,73 +6,83 @@
 #include <cmath>
 #include <omp.h>
 
-Generator::Generator(glm::uvec3 grid_size) : grid_size(grid_size){}
-Generator::Generator(unsigned sx, unsigned sy, unsigned sz) : grid_size(sx, sy, sz){}
+namespace gen{
 
-Grid<float> Generator::fromFile(const std::string fileName){
-    std::ifstream file(fileName);
-    if(!file.is_open()){
-        std::cerr << "Generator: Error opening file: " << fileName << std::endl;
+    Grid<float> fromFile(const std::string fileName){
+        std::ifstream file(fileName);
+        if(!file.is_open()){
+            std::cerr << "Generator: Error opening file: " << fileName << std::endl;
+        }
+        
+        unsigned sx, sy, sz;
+        float iso;
+        file >> sx >> sy >> sz >> iso;
+
+        std::istream_iterator<float> start(file), end;
+        Grid<float> grid(sx,sy,sz,iso);
+        std::copy(start, end, grid.raw_data());
+        return grid;
     }
-    
-    unsigned sx, sy, sz;
-    file >> sx >> sy >> sz;
 
-    std::istream_iterator<float> start(file), end;
-    Grid<float> grid(sx,sy,sz);
-    std::copy(start, end, grid.raw_data());
-    return grid;
-}
+    Grid<float> sphere(float radius){
+        unsigned d = std::ceil(2.0f * radius) + 4;
+        glm::vec3 center = glm::vec3(d) * 0.5f;
 
-Grid<float> Generator::genSphere(glm::vec3 center, float radius){
-    Grid<float> sphere(grid_size);
+        Grid<float> sphere(glm::uvec3(d), 0.0f);
 
-    #pragma omp parallel for
-    for(int z = 0; z < grid_size.z; z++){
-        for(int y = 0; y < grid_size.y; y++){
-            for(int x = 0; x < grid_size.x; x++){
-                sphere(x,y,z) = radius - glm::length(glm::vec3(x,y,z) - center);
+        #pragma omp parallel for
+        for(unsigned z = 0; z < d; z++){
+            for(unsigned y = 0; y < d; y++){
+                for(unsigned x = 0; x < d; x++){
+                    sphere(x,y,z) = radius - glm::length(glm::vec3(x,y,z) - center);
+                }
             }
         }
+        
+        return sphere;
     }
-    
-    return sphere;
-}
 
-Grid<float> Generator::genTorus(glm::vec3 center, float r_minor, float r_major){
-    Grid<float> torus(grid_size);
+    Grid<float> torus(float r_minor, float r_major){
 
-    float rSquared = r_minor * r_minor;
-    #pragma omp parallel for schedule(static)
-    for(int z = 0; z < grid_size.z; z++){
-        for(int y = 0; y < grid_size.y; y++){
-            #pragma omp simd
-            for(int x = 0; x < grid_size.x; x++){
-                const glm::vec3 to_center = glm::vec3(x,y,z) - center;
-                const glm::vec2 xz = glm::vec2(to_center.x, to_center.z);
-                float leftSide = r_major - glm::length(xz);
-                leftSide *= leftSide;
-                leftSide += to_center.y * to_center.y;
-                torus(x,y,z) = rSquared - leftSide;
+        unsigned dxz = static_cast<unsigned>(std::ceil(2.0f * (r_minor + r_major)) + 4);
+        unsigned dy = static_cast<unsigned>(std::ceil(2.0f * r_minor) + 4);
+
+        glm::vec3 center = glm::vec3(dxz,dy,dxz) * 0.5f;
+
+        Grid<float> torus(dxz,dy,dxz, 0.0f);
+
+        float rSquared = r_minor * r_minor;
+        #pragma omp parallel for schedule(static)
+        for(unsigned z = 0; z < dxz; z++){
+            for(unsigned y = 0; y < dy; y++){
+                #pragma omp simd
+                for(unsigned x = 0; x < dxz; x++){
+                    const glm::vec3 to_center = glm::vec3(x,y,z) - center;
+                    const glm::vec2 xz = glm::vec2(to_center.x, to_center.z);
+                    float leftSide = r_major - glm::length(xz);
+                    leftSide *= leftSide;
+                    leftSide += to_center.y * to_center.y;
+                    torus(x,y,z) = rSquared - leftSide;
+                }
             }
         }
+        return torus;
     }
-    return torus;
-}
 
-Grid<float> Generator::genGyroid(float scale, float threshold) {
-    Grid<float> field(grid_size);
+    Grid<float> gyroid(glm::uvec3 size, float scale, float thresh){
+        Grid<float> field(size, 0.0f);
 
-    #pragma omp parallel for
-    for (int z = 0; z < grid_size.z; z++) {
-        for (int y = 0; y < grid_size.y; y++) {
-            for (int x = 0; x < grid_size.x; x++) {
-                glm::vec3 p = glm::vec3(x, y, z) * scale;
-                float v = std::sin(p.x) * std::cos(p.y) + std::sin(p.y) * std::cos(p.z) + std::sin(p.z) * std::cos(p.x);
-                field(x, y, z) = v - threshold;  // isosurface at 0
+        #pragma omp parallel for
+        for (int z = 0; z < size.z; z++) {
+            for (int y = 0; y < size.y; y++) {
+                for (int x = 0; x < size.x; x++) {
+                    glm::vec3 p = glm::vec3(x, y, z) * scale;
+                    float v = std::sin(p.x) * std::cos(p.y) + std::sin(p.y) * std::cos(p.z) + std::sin(p.z) * std::cos(p.x);
+                    field(x, y, z) = v - thresh;  // isosurface at 0
+                }
             }
         }
-    }
 
-    return field;
+        return field;
+    }
 }

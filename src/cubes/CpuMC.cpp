@@ -277,3 +277,19 @@ template void CpuMC::trinagulate_grid<CpuMC::PG,true>(const Grid<float> &grid, f
 
 template void CpuMC::trinagulate_grid<CpuMC::PG,false>(const Grid<float> &grid, float isovalue, 
             std::vector<glm::vec3>& outVerts, std::vector<glm::vec3>& outNormals);
+
+template void CpuMC::trinagulate_grid_mut<CpuMC::P,true>(const Grid<float> &grid, float isovalue, 
+            std::vector<glm::vec3>& outVerts, std::vector<glm::vec3>& outNormals,
+            std::mutex &mut, std::atomic_bool &should_stop, double delay);
+
+template void CpuMC::trinagulate_grid_mut<CpuMC::P,false>(const Grid<float> &grid, float isovalue, 
+            std::vector<glm::vec3>& outVerts, std::vector<glm::vec3>& outNormals,
+            std::mutex &mut, std::atomic_bool &should_stop, double delay);
+            
+template void CpuMC::trinagulate_grid_mut<CpuMC::PG,true>(const Grid<float> &grid, float isovalue, 
+            std::vector<glm::vec3>& outVerts, std::vector<glm::vec3>& outNormals,
+            std::mutex &mut, std::atomic_bool &should_stop, double delay);
+
+template void CpuMC::trinagulate_grid_mut<CpuMC::PG,false>(const Grid<float> &grid, float isovalue, 
+            std::vector<glm::vec3>& outVerts, std::vector<glm::vec3>& outNormals,
+            std::mutex &mut, std::atomic_bool &should_stop, double delay);
