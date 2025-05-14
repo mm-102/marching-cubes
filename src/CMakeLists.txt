@@ -13,6 +13,7 @@ target_include_directories(marching PUBLIC cubes)
 
 target_link_libraries(marching_vis PUBLIC libcubesgen)
 target_link_libraries(marching_vis PUBLIC libcubescpu)
+target_link_libraries(marching_vis PUBLIC libcubescuda)
 target_include_directories(marching_vis PUBLIC cubes)
 
 find_package(glm REQUIRED)

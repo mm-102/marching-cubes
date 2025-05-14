@@ -223,7 +223,7 @@ namespace CpuMC{
                             trinagulate_cell<T>(cell, isovalue, lVerts, lNorms);
 
                             if(!lVerts.empty()){
-                            if(delay > 0.0)
+                                if(delay > 0.0)
                                     std::this_thread::sleep_for(std::chrono::duration<double>{delay});
                                 std::lock_guard<std::mutex> lock(mut);
                                 outVerts.insert(outVerts.end(), lVerts.begin(), lVerts.end());
@@ -247,10 +247,10 @@ namespace CpuMC{
                         
                         const glm::vec3 p(x,y,z);
                         GridCell<Ele<T>> cell = make_cell<Ele<T>>(grid, p, x, y, z);
-                        trinagulate_cell<T>(cell, isovalue, outVerts, outNormals);
+                        trinagulate_cell<T>(cell, isovalue, lVerts, lNorms);
 
                         if(!lVerts.empty()){
-                        if(delay > 0.0)
+                            if(delay > 0.0)
                                 std::this_thread::sleep_for(std::chrono::duration<double>{delay});
                             std::lock_guard<std::mutex> lock(mut);
                             outVerts.insert(outVerts.end(), lVerts.begin(), lVerts.end());

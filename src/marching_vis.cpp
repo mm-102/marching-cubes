@@ -13,17 +13,36 @@
 #include <window_manager.hpp>
 #include <camera.hpp>
 #include <CpuMC.hpp>
+#include <CudaMC.hpp>
 
 std::vector<glm::vec3> vertBuf, normBuf;
 std::mutex mut;
 std::atomic_bool should_stop{false};
 std::atomic_bool march_finished{false};
 
-void march(Grid<float> &grid, float isovalue, double delay, bool use_grad){
-    if(use_grad)
-        CpuMC::trinagulate_grid_mut<CpuMC::PG,true>(grid,isovalue,vertBuf,normBuf, mut, should_stop, delay);
-    else
-        CpuMC::trinagulate_grid_mut<CpuMC::P,true>(grid,isovalue,vertBuf,normBuf, mut, should_stop, delay);
+void march(Grid<float> &grid, float isovalue, double delay, bool use_grad, const std::string mode){
+    if(use_grad){
+        if(mode == "omp")
+            CpuMC::trinagulate_grid_mut<CpuMC::PG,true>(grid,isovalue,vertBuf,normBuf, mut, should_stop, delay);
+        else if(mode == "seq")
+            CpuMC::trinagulate_grid_mut<CpuMC::PG,false>(grid,isovalue,vertBuf,normBuf, mut, should_stop, delay);
+        else if(mode == "cuda")
+            std::cerr << "Cuda is not avaliable in animate mode" << std::endl;
+        else{
+            std::cerr << "Incorrect mode, use seq, omp or cuda" << std::endl;
+        }
+    }
+    else{
+        if(mode == "omp")
+            CpuMC::trinagulate_grid_mut<CpuMC::P,true>(grid,isovalue,vertBuf,normBuf, mut, should_stop, delay);
+        else if(mode == "seq")
+            CpuMC::trinagulate_grid_mut<CpuMC::P,false>(grid,isovalue,vertBuf,normBuf, mut, should_stop, delay);
+        else if(mode == "cuda")
+            std::cerr << "Cuda is not avaliable in animate mode" << std::endl;
+        else{
+            std::cerr << "Incorrect mode, use seq, omp or cuda" << std::endl;
+        }
+    }
 	march_finished = true;
 }
 
@@ -53,6 +72,7 @@ int main(int argc, const char *argv[]){
         ("v,value,isovalue", "set custom isovalue", cxxopts::value<float>(isovalue)->default_value("0.0"))
         ("a,animate", "Show mesh during triangulation (slow)", cxxopts::value<bool>(animate)->default_value("false"))
         ("t,time,delay_time", "Delay between iterations when animating", cxxopts::value<double>(delay)->default_value("0.0"))
+        ("m,mode", "use seq, omp or cuda", cxxopts::value<std::string>()->default_value("omp"))
     ;
 
     auto result = options.parse(argc, argv);
@@ -140,12 +160,32 @@ int main(int argc, const char *argv[]){
         std::cout << "Mesh triangulated in [ms] : " << duration.count() << std::endl;
     };
 
+    const std::string mode = result["mode"].as<std::string>();
+    std::cout << "Implementation: " << mode << std::endl;
     std::thread marching_thread;
     if(!animate){
-        if(use_grad)
-            CpuMC::trinagulate_grid<CpuMC::PG,true>(grid,isovalue,vertData,normData);
-        else
-            CpuMC::trinagulate_grid<CpuMC::P,true>(grid,isovalue,vertData,normData);
+        if(use_grad){
+            if(mode == "omp")
+                CpuMC::trinagulate_grid<CpuMC::PG,true>(grid,isovalue,vertData,normData);
+            else if(mode == "seq")
+                CpuMC::trinagulate_grid<CpuMC::PG,false>(grid,isovalue,vertData,normData);
+            else if(mode == "cuda")
+                CudaMC::trinagulate_grid<CudaMC::PG>(grid,isovalue,vertData,normData);
+            else{
+                std::cerr << "Incorrect mode, use seq, omp or cuda" << std::endl;
+            }
+        }
+        else{
+            if(mode == "omp")
+                CpuMC::trinagulate_grid<CpuMC::P,true>(grid,isovalue,vertData,normData);
+            else if(mode == "seq")
+                CpuMC::trinagulate_grid<CpuMC::P,false>(grid,isovalue,vertData,normData);
+            else if(mode == "cuda")
+                CudaMC::trinagulate_grid<CudaMC::P>(grid,isovalue,vertData,normData);
+            else{
+                std::cerr << "Incorrect mode, use seq,omp or cuda" << std::endl;
+            }
+        }
 
         triangles = std::make_shared<Triangles>(vertData.size(),M);
         windowManager.add_object(triangles);
@@ -156,7 +196,7 @@ int main(int argc, const char *argv[]){
         const size_t init_res = static_cast<size_t>(size.x * size.y * size.z / 9);
         triangles = std::make_shared<Triangles>(init_res,M);
         windowManager.add_object(triangles);
-        marching_thread = std::thread(march, std::ref(grid), isovalue, delay, use_grad);
+        marching_thread = std::thread(march, std::ref(grid), isovalue, delay, use_grad, mode);
     }
 
     float delta = 0.0f;
