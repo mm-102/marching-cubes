@@ -31,14 +31,17 @@ namespace CpuMC{
         return index;
     }
 
-    inline glm::vec3 calcGrad(const Grid<float> &grid, const int &x, const int &y, const int &z){
-        if(x < 1 || y < 1 || z < 1)
-            return glm::vec3(0);
-            
+    inline glm::vec3 calcGrad(const Grid<float> &grid, const int &x, const int &y, const int &z){        
+        // glm::uvec3 s = grid.getSize();
+        // if(x < 1 || y < 1 || z < 1 || x > s.x - 2 || y > s.y - 2 || z > s.z - 2)
+        //     return glm::vec3(0);
+
+        glm::uvec3 p = glm::clamp(glm::uvec3(x,y,z), glm::uvec3(1), grid.getSize() - 2u);
+        
         return glm::normalize(glm::vec3(
-            grid(x + 1, y, z) - grid(x - 1, y, z),
-            grid(x, y + 1, z) - grid(x, y - 1, z),
-            grid(x, y, z + 1) - grid(x, y, z - 1)
+            grid(p.x + 1, p.y, p.z) - grid(p.x - 1, p.y, p.z),
+            grid(p.x, p.y + 1, p.z) - grid(p.x, p.y - 1, p.z),
+            grid(p.x, p.y, p.z + 1) - grid(p.x, p.y, p.z - 1)
         ));
     }
 
@@ -158,6 +161,12 @@ namespace CpuMC{
                 for(int z = 0; z < grid_size.z - 1; z++){
                     for(int y = 0; y < grid_size.y - 1; y++){
                         for(int x = 0; x < grid_size.x - 1; x++){
+
+                            if(lVerts.capacity() < lVerts.size() + 15){
+                                size_t res = static_cast<size_t>(1.5f * lVerts.size());
+                                lVerts.reserve(res);
+                                lNorms.reserve(res);
+                            }
                             
                             const glm::vec3 p(x,y,z);
                             GridCell<Ele<T>> cell = make_cell<Ele<T>>(grid, p, x, y, z);
@@ -168,6 +177,8 @@ namespace CpuMC{
     
                 #pragma omp critical
                 {
+                    outVerts.reserve(outVerts.size() + lVerts.size());
+                    outNormals.reserve(outNormals.size() + lNorms.size());
                     outVerts.insert(outVerts.end(), lVerts.begin(), lVerts.end());
                     outNormals.insert(outNormals.end(), lNorms.begin(), lNorms.end());
                 }

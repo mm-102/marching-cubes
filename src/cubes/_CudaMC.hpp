@@ -82,7 +82,7 @@ struct GPU_Grid {
 };
 
 __device__ float3 calcGrad(const GPU_Grid &grid, const int &x, const int &y, const int &z){   
-    if(x < 1 || y < 1 || z < 1)
+    if(x < 1 || y < 1 || z < 1 || x > grid.x - 2 || y > grid.y - 2 || z > grid.z - 2)
         return make_float3(0,0,0);
             
     return normalize(make_float3(

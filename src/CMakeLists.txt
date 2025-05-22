@@ -1,5 +1,6 @@
 target_sources(marching PRIVATE marching.cpp)
 target_sources(marching_vis PRIVATE marching_vis.cpp)
+target_sources(time_test PRIVATE time_test.cpp)
 
 add_subdirectory(display)
 target_link_libraries(marching_vis PUBLIC libdisplay)
@@ -16,9 +17,15 @@ target_link_libraries(marching_vis PUBLIC libcubescpu)
 target_link_libraries(marching_vis PUBLIC libcubescuda)
 target_include_directories(marching_vis PUBLIC cubes)
 
+target_link_libraries(time_test PUBLIC libcubesgen)
+target_link_libraries(time_test PUBLIC libcubescpu)
+target_link_libraries(time_test PUBLIC libcubescuda)
+target_include_directories(time_test PUBLIC cubes)
+
 find_package(glm REQUIRED)
 target_include_directories(marching PUBLIC ${GLM_INCLUDE_DIRS})
 target_include_directories(marching_vis PUBLIC ${GLM_INCLUDE_DIRS})
+target_include_directories(time_test PUBLIC ${GLM_INCLUDE_DIRS})
 
 # find_package(OpenMP)
 # if(OpenMP_CXX_FOUND)

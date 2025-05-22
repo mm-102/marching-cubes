@@ -114,6 +114,25 @@ int main(int argc, const char *argv[]){
             std::cout << "Generator shape: sphere " << r << std::endl;
             grid = gen::sphere(r);
         }
+        else if(shape == "perlin"){
+            float sc;
+            glm::uvec3 s;
+            if(dims.size() == 2){
+                sc = dims.at(0);
+                s = glm::uvec3(dims.at(1));
+            }
+            else if(dims.size() == 4){
+                sc = dims.at(0);
+                s = glm::uvec3(dims.at(1), dims.at(2), dims.at(3));
+            }
+            else {
+                std::cerr << "Generator perlin incorrect dimentions!" << std::endl;
+                exit(EXIT_FAILURE);
+            }
+
+            std::cout << "Generator shape: perlin " << s.x << " " << s.y << " " << s.z << std::endl;
+            grid = gen::perlin(s, sc);
+        }
         else {
             std::cerr << "Generator: incorrect generate shape!" << std::endl;
             exit(EXIT_FAILURE);
@@ -142,7 +161,7 @@ int main(int argc, const char *argv[]){
 	}
     
     const glm::vec3 size = glm::vec3(grid.getSize());
-    const float viev_range = std::max(size.x, std::max(size.y,size.z)) * 2.0f;
+    const float viev_range = std::max(size.x, std::max(size.y,size.z)) * 3.0f;
     Camera camera(glm::vec3(0.0f), 1.5f * size.z, 0.873f, viev_range, windowManager.get_size_ratio());
 
     windowManager.attach_resize_callback([&](int w, int h, int ratio){camera.updateWindowRatio(ratio);});

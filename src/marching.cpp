@@ -67,6 +67,25 @@ int main(int argc, const char *argv[]){
             std::cout << "Generator shape: sphere " << r << std::endl;
             grid = gen::sphere(r);
         }
+        else if(shape == "perlin"){
+            float sc;
+            glm::uvec3 s;
+            if(dims.size() == 2){
+                sc = dims.at(0);
+                s = glm::uvec3(dims.at(1));
+            }
+            else if(dims.size() == 4){
+                sc = dims.at(0);
+                s = glm::uvec3(dims.at(1), dims.at(2), dims.at(3));
+            }
+            else {
+                std::cerr << "Generator perlin incorrect dimentions!" << std::endl;
+                exit(EXIT_FAILURE);
+            }
+
+            std::cout << "Generator shape: perlin " << s.x << " " << s.y << " " << s.z << std::endl;
+            grid = gen::perlin(s, sc);
+        }
         else {
             std::cerr << "Generator: incorrect generate shape!" << std::endl;
             exit(EXIT_FAILURE);

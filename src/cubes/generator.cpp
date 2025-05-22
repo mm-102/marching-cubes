@@ -6,6 +6,9 @@
 #include <cmath>
 #include <omp.h>
 
+#define STB_PERLIN_IMPLEMENTATION
+#include "stb_perlin.h"
+
 namespace gen{
 
     Grid<float> fromFile(const std::string fileName){
@@ -79,6 +82,25 @@ namespace gen{
                     glm::vec3 p = glm::vec3(x, y, z) * scale;
                     float v = std::sin(p.x) * std::cos(p.y) + std::sin(p.y) * std::cos(p.z) + std::sin(p.z) * std::cos(p.x);
                     field(x, y, z) = v - thresh;  // isosurface at 0
+                }
+            }
+        }
+
+        return field;
+    }
+
+    Grid<float> perlin(glm::uvec3 size, float scale, glm::uvec3 wrap){
+        Grid<float> field(size, 0.0f);
+
+        glm::vec3 mul = glm::vec3(scale) / glm::vec3(size);
+
+        #pragma omp parallel for
+        for (int z = 0; z < size.z; z++) {
+            for (int y = 0; y < size.y; y++) {
+                for (int x = 0; x < size.x; x++) {
+                   
+                    glm::vec3 c = glm::vec3(x,y,z) * mul;
+                    field(x,y,z) = stb_perlin_noise3(c.x, c.y, c.z, wrap.x, wrap.y, wrap.z);
                 }
             }
         }
