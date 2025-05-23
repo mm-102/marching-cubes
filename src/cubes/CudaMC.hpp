@@ -3,6 +3,7 @@
 #include <vector_types.h>
 #include <vector_functions.hpp>
 #include <vector>
+#include <tuple>
 
 namespace CudaMC{
     struct PG{
@@ -17,4 +18,5 @@ namespace CudaMC{
             std::vector<glm::vec3>& outVerts, std::vector<glm::vec3>& outNormals);
     
     void setConstMem();
+    std::tuple<int64_t,int64_t,int64_t> test_time(const Grid<float> &grid, float isovalue);
 }

@@ -6,6 +6,8 @@
 #include <thrust/device_vector.h>
 #include <thrust/scan.h>
 #include <thrust/device_ptr.h>
+#include <chrono>
+#include <tuple>
 
 
 namespace CudaMC
@@ -176,10 +178,9 @@ namespace CudaMC
 
         GPU_Grid d_grid(d_data, size.x, size.y, size.z);
 
-        thrust::device_vector<int> d_counts(totalCells + 1);
         thrust::device_vector<int> d_offsets(totalCells + 1);
 
-        count_triangles_kernel<<<blocks, threads>>>(d_grid, isovalue, thrust::raw_pointer_cast(d_counts.data()));
+        count_triangles_kernel<<<blocks, threads>>>(d_grid, isovalue, thrust::raw_pointer_cast(d_offsets.data()));
         cudaDeviceSynchronize();
         cudaError_t err = cudaGetLastError();
         if (err != cudaSuccess) {
@@ -188,7 +189,7 @@ namespace CudaMC
         }
         
         // prefix sum
-        thrust::exclusive_scan(d_counts.begin(), d_counts.end(), d_offsets.begin());
+        thrust::exclusive_scan(d_offsets.begin(), d_offsets.end(), d_offsets.begin());
         
         err = cudaGetLastError();
         if (err != cudaSuccess) {
@@ -231,6 +232,94 @@ namespace CudaMC
         cudaMemcpyToSymbol(d_triTable, triTable, sizeof(triTable));
         
         cudaMemcpyToSymbol(d_order, order, sizeof(order));
+    }
+
+    std::tuple<int64_t,int64_t,int64_t> test_time(const Grid<float> &grid, float isovalue){
+
+        int64_t copy_time = 0, kernel_time = 0, checksum = 0;
+
+        const glm::vec3 size = grid.getSize();
+        size_t numEle = size.x * size.y * size.z;
+        const int totalCells = (size.x - 1) * (size.y - 1) * (size.z - 1);
+
+        dim3 threads(16,16,4);
+        dim3 blocks(
+            ceil((double)(size.x - 1) / threads.x),
+            ceil((double)(size.y - 1) / threads.y),
+            ceil((double)(size.z - 1) / threads.z)
+        );
+
+        auto start = std::chrono::high_resolution_clock::now(); // start copy_time part 1
+
+        float *d_data;
+        cudaMalloc(&d_data, numEle * sizeof(float));
+        cudaMemcpy(d_data, grid.raw_data(), numEle * sizeof(float), cudaMemcpyHostToDevice);
+
+        GPU_Grid d_grid(d_data, size.x, size.y, size.z);
+
+        auto end = std::chrono::high_resolution_clock::now();
+        copy_time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+
+        start = std::chrono::high_resolution_clock::now(); // start kernel_time
+
+        thrust::device_vector<int> d_offsets(totalCells + 1);
+
+        count_triangles_kernel<<<blocks, threads>>>(d_grid, isovalue, thrust::raw_pointer_cast(d_offsets.data()));
+        cudaDeviceSynchronize();
+        cudaError_t err = cudaGetLastError();
+        if (err != cudaSuccess) {
+            std::cerr << "[count_triangles] CUDA kernel error: " << cudaGetErrorString(err) << std::endl;
+            return {0,0,0};
+        }
+        
+        // prefix sum
+        thrust::exclusive_scan(d_offsets.begin(), d_offsets.end(), d_offsets.begin());
+        
+        err = cudaGetLastError();
+        if (err != cudaSuccess) {
+            std::cerr << "[exclusive_scan] CUDA kernel error: " << cudaGetErrorString(err) << std::endl;
+            return {0,0,0};
+        }
+
+        int triNum;
+        cudaMemcpy(&triNum, thrust::raw_pointer_cast(d_offsets.data()+totalCells), sizeof(int), cudaMemcpyDeviceToHost);
+        const int vertNum = 3 * triNum;
+
+        float3 *d_verts;
+        float3* d_normals;
+        cudaMalloc(&d_verts, vertNum * sizeof(float3));
+        cudaMalloc(&d_normals, vertNum * sizeof(float3));
+
+        triangulate_kernel<PG><<<blocks, threads>>>(d_grid, isovalue, d_verts, d_normals, thrust::raw_pointer_cast(d_offsets.data()));
+        cudaDeviceSynchronize();
+        
+        err = cudaGetLastError();
+        if (err != cudaSuccess) {
+            std::cerr << "[triangulate] CUDA kernel error: " << cudaGetErrorString(err) << std::endl;
+            return {0,0,0};
+        }
+        
+        end = std::chrono::high_resolution_clock::now();
+        kernel_time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+
+        start = std::chrono::high_resolution_clock::now(); // start copy_time part 2
+        std::vector<glm::vec3> outVerts(vertNum);
+        std::vector<glm::vec3> outNormals(vertNum);
+
+        cudaMemcpy(outVerts.data(), d_verts, vertNum * sizeof(float3), cudaMemcpyDeviceToHost);
+        cudaMemcpy(outNormals.data(), d_normals, vertNum * sizeof(float3), cudaMemcpyDeviceToHost);
+
+        cudaFree(d_data);
+        cudaFree(d_verts);
+        cudaFree(d_normals);
+
+        end = std::chrono::high_resolution_clock::now();
+        copy_time += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+
+        for (const auto& v : outVerts) checksum += static_cast<size_t>(v.x + v.y + v.z);
+        for (const auto& n : outNormals) checksum += static_cast<size_t>(n.x + n.y + n.z);
+
+        return {copy_time, kernel_time, checksum};
     }
 
 }
