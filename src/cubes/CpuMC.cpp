@@ -5,6 +5,7 @@
 #include <omp.h>
 #include <chrono>
 #include <thread>
+#include <iostream>
 
 namespace CpuMC{
 
@@ -156,6 +157,7 @@ namespace CpuMC{
                 std::vector<glm::vec3> lVerts, lNorms;
                 lVerts.reserve(2 * res / omp_get_num_threads());
                 lNorms.reserve(2 * res / omp_get_num_threads());
+                GridCell<Ele<T>> cell;
     
                 #pragma omp for collapse(3) schedule(static) nowait
                 for(int z = 0; z < grid_size.z - 1; z++){
@@ -169,7 +171,7 @@ namespace CpuMC{
                             }
                             
                             const glm::vec3 p(x,y,z);
-                            GridCell<Ele<T>> cell = make_cell<Ele<T>>(grid, p, x, y, z);
+                            cell = make_cell<Ele<T>>(grid, p, x, y, z);
                             trinagulate_cell<T>(cell, isovalue, lVerts, lNorms);
                         }
                     }
@@ -185,12 +187,19 @@ namespace CpuMC{
             }
         }
         else {
+            GridCell<Ele<T>> cell;
             for(int z = 0; z < grid_size.z - 1; z++){
                 for(int y = 0; y < grid_size.y - 1; y++){
                     for(int x = 0; x < grid_size.x - 1; x++){
+
+                        if(outVerts.capacity() < outVerts.size() + 15){
+                            size_t res = static_cast<size_t>(1.5f * outVerts.size());
+                            outVerts.reserve(res);
+                            outNormals.reserve(res);
+                        }
                         
                         const glm::vec3 p(x,y,z);
-                        GridCell<Ele<T>> cell = make_cell<Ele<T>>(grid, p, x, y, z);
+                        cell = make_cell<Ele<T>>(grid, p, x, y, z);
                         trinagulate_cell<T>(cell, isovalue, outVerts, outNormals);
                     }
                 }

@@ -27,7 +27,7 @@ public:
     Grid(unsigned mx, unsigned my, unsigned mz, T isovalue) : s(mx,my,mz), iso(isovalue), data(new T[mx * my * mz]){}
     
     Grid(glm::uvec3 size, T isovalue) : s(size), iso(isovalue), data(new T[size.x * size.y * size.z]){}
-
+    
     ~Grid(){
         delete[] data;
     }
@@ -53,7 +53,7 @@ public:
         data = newData;
         return *this;
     }
-
+    
     Grid& operator=(Grid&& other) noexcept {
         if (this == &other) return *this;
         delete[] data;

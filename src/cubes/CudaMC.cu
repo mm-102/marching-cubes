@@ -249,7 +249,7 @@ namespace CudaMC
             ceil((double)(size.z - 1) / threads.z)
         );
 
-        auto start = std::chrono::high_resolution_clock::now(); // start copy_time part 1
+        auto start = std::chrono::steady_clock::now(); // start copy_time part 1
 
         float *d_data;
         cudaMalloc(&d_data, numEle * sizeof(float));
@@ -257,12 +257,12 @@ namespace CudaMC
 
         GPU_Grid d_grid(d_data, size.x, size.y, size.z);
 
-        auto end = std::chrono::high_resolution_clock::now();
+        auto end = std::chrono::steady_clock::now();
         copy_time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
 
-        start = std::chrono::high_resolution_clock::now(); // start kernel_time
-
         thrust::device_vector<int> d_offsets(totalCells + 1);
+
+        start = std::chrono::steady_clock::now(); // start kernel_time
 
         count_triangles_kernel<<<blocks, threads>>>(d_grid, isovalue, thrust::raw_pointer_cast(d_offsets.data()));
         cudaDeviceSynchronize();
@@ -299,21 +299,22 @@ namespace CudaMC
             return {0,0,0};
         }
         
-        end = std::chrono::high_resolution_clock::now();
+        end = std::chrono::steady_clock::now();
         kernel_time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
 
-        start = std::chrono::high_resolution_clock::now(); // start copy_time part 2
+        start = std::chrono::steady_clock::now(); // start copy_time part 2
         std::vector<glm::vec3> outVerts(vertNum);
         std::vector<glm::vec3> outNormals(vertNum);
 
         cudaMemcpy(outVerts.data(), d_verts, vertNum * sizeof(float3), cudaMemcpyDeviceToHost);
         cudaMemcpy(outNormals.data(), d_normals, vertNum * sizeof(float3), cudaMemcpyDeviceToHost);
 
+        end = std::chrono::steady_clock::now();
+
         cudaFree(d_data);
         cudaFree(d_verts);
         cudaFree(d_normals);
 
-        end = std::chrono::high_resolution_clock::now();
         copy_time += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
 
         for (const auto& v : outVerts) checksum += static_cast<size_t>(v.x + v.y + v.z);

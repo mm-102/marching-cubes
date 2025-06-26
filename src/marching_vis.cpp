@@ -73,9 +73,15 @@ int main(int argc, const char *argv[]){
         ("a,animate", "Show mesh during triangulation (slow)", cxxopts::value<bool>(animate)->default_value("false"))
         ("t,time,delay_time", "Delay between iterations when animating", cxxopts::value<double>(delay)->default_value("0.0"))
         ("m,mode", "use seq, omp or cuda", cxxopts::value<std::string>()->default_value("omp"))
+        ("h,help", "Print usage")
     ;
 
     auto result = options.parse(argc, argv);
+    if (result.count("help"))
+    {
+      std::cout << options.help() << std::endl;
+      exit(0);
+    }
 
     Grid<float> grid;
 

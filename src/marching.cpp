@@ -27,9 +27,16 @@ int main(int argc, const char *argv[]){
         ("i,input", "load grid from file", cxxopts::value<std::string>())
         ("v,value,isovalue", "set custom isovalue", cxxopts::value<float>(isovalue)->default_value("0.0"))
         ("m,mode", "use seq, omp or cuda", cxxopts::value<std::string>()->default_value("cuda"))
+        ("h,help", "Print usage")
     ;
 
     auto result = options.parse(argc, argv);
+
+    if (result.count("help"))
+    {
+      std::cout << options.help() << std::endl;
+      exit(0);
+    }
 
     Grid<float> grid;
 
@@ -108,7 +115,7 @@ int main(int argc, const char *argv[]){
     std::cout << "Implementation: " << mode << std::endl;
 
     CudaMC::setConstMem();
-    auto start = std::chrono::high_resolution_clock::now();
+    auto start = std::chrono::steady_clock::now();
 
     if(use_grad){
         if(mode == "omp")
@@ -133,7 +140,7 @@ int main(int argc, const char *argv[]){
         }
     }
 
-    auto end = std::chrono::high_resolution_clock::now();
+    auto end = std::chrono::steady_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     std::cout << "Mesh triangulated in [ms] : " << duration.count() << std::endl;
     std::cout << vertData.size() << std::endl;
